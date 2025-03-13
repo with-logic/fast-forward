@@ -1,8 +1,11 @@
 # fast-forward
 
+<p align="center">
+  <img src="logo.jpg" alt="fast-forward logo" width="300" />
+</p>
+
 A TypeScript library that wraps objects in a cache-aware Proxy for faster method calls. Similar to VCR, snapshot libraries, and request recording tools, fast-forward makes testing faster by caching method calls to avoid expensive operations during repeated test runs.
 
-[![npm version](https://badge.fury.io/js/fast-forward.svg)](https://badge.fury.io/js/fast-forward)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Features
