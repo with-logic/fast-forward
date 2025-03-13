@@ -90,7 +90,7 @@ const cachedOpenAI = ff(openai, { cache: fsCache });
 
 // First call will make a real API request
 const response1 = await cachedOpenAI.chat.completions.create({
-  model: 'gpt-4',
+  model: 'gpt-4o',
   messages: [{ role: 'user', content: 'Hello, world!' }],
 });
 console.log('First call (real API request):', response1.choices[0].message.content);
@@ -98,7 +98,7 @@ console.log('First call (real API request):', response1.choices[0].message.conte
 // Subsequent calls with the same parameters will return cached results instantly
 // without making actual API requests or counting against your rate limits
 const response2 = await cachedOpenAI.chat.completions.create({
-  model: 'gpt-4',
+  model: 'gpt-4o',
   messages: [{ role: 'user', content: 'Hello, world!' }],
 });
 console.log('Second call (from cache):', response2.choices[0].message.content);
@@ -113,7 +113,7 @@ const forceUpdateOpenAI = ff(openai, {
 
 // This will always call the API even if cached
 const freshResponse = await forceUpdateOpenAI.chat.completions.create({
-  model: 'gpt-4',
+  model: 'gpt-4o',
   messages: [{ role: 'user', content: 'Hello, world!' }],
 });
 console.log('Force update call:', freshResponse.choices[0].message.content);
