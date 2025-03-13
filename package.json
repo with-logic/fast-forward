@@ -1,5 +1,5 @@
 {
-  "name": "fast-forward",
+  "name": "@with-logic/fast-forward",
   "version": "0.1.0",
   "description": "A TypeScript library that wraps objects in a cache-aware Proxy for faster method calls",
   "main": "dist/index.js",
@@ -9,6 +9,7 @@
     "dist"
   ],
   "directories": {
+    "example": "examples",
     "test": "test"
   },
   "scripts": {
@@ -31,7 +32,7 @@
     "performance",
     "typescript"
   ],
-  "author": "",
+  "author": "LOGIC, Inc.",
   "license": "MIT",
   "devDependencies": {
     "@types/crypto-js": "^4.2.2",
@@ -51,5 +52,13 @@
   "dependencies": {
     "crypto-js": "^4.2.0",
     "json-stable-stringify": "^1.2.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/with-logic/fast-foward.git"
+  },
+  "bugs": {
+    "url": "https://github.com/with-logic/fast-foward/issues"
+  },
+  "homepage": "https://github.com/with-logic/fast-foward#readme"
 }
