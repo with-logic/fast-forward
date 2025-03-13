@@ -1,0 +1,54 @@
+{
+  "name": "fast-forward",
+  "version": "0.1.0",
+  "description": "A TypeScript library that wraps objects in a cache-aware Proxy for faster method calls",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint 'src/**/*.ts' 'test/**/*.ts'",
+    "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
+    "check": "npm run build && npm run prepublishOnly",
+    "prepare": "npm run build",
+    "prepublishOnly": "npm test && npm run format && npm run lint",
+    "coverage": "jest --coverage"
+  },
+  "keywords": [
+    "cache",
+    "proxy",
+    "memoize",
+    "performance",
+    "typescript"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/crypto-js": "^4.2.2",
+    "@types/jest": "^29.5.14",
+    "@typescript-eslint/eslint-plugin": "^8.25.0",
+    "@typescript-eslint/parser": "^8.25.0",
+    "eslint": "^9.21.0",
+    "eslint-config-prettier": "^10.0.2",
+    "eslint-plugin-prettier": "^5.2.3",
+    "jest": "^29.7.0",
+    "nyc": "^17.1.0",
+    "prettier": "^3.5.2",
+    "ts-jest": "^29.2.6",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.26.1"
+  },
+  "dependencies": {
+    "crypto-js": "^4.2.0",
+    "json-stable-stringify": "^1.2.1"
+  }
+}
