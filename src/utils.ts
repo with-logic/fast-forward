@@ -1,4 +1,5 @@
 import stringify from 'json-stable-stringify';
+import { Cache, CacheMode, FastForwardOptions } from './types';
 
 /**
  * Generates a cache key based on method name and arguments.
@@ -42,4 +43,64 @@ export function isMethod(target: any, prop: string | symbol): boolean {
  */
 export function isObject(value: any): boolean {
   return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+
+/**
+ * Type guard to check if a value is a Cache implementation.
+ *
+ * @param value - The value to check
+ * @returns True if the value implements the Cache interface
+ */
+export function isCache(value: any): value is Cache {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  return (
+    typeof value.get === 'function' &&
+    typeof value.set === 'function' &&
+    typeof value.has === 'function' &&
+    typeof value.delete === 'function' &&
+    typeof value.clear === 'function'
+  );
+}
+
+/**
+ * Type guard to check if a value is FastForwardOptions.
+ *
+ * @param value - The value to check
+ * @returns True if the value matches the FastForwardOptions interface
+ */
+export function isFastForwardOptions(value: any): value is FastForwardOptions {
+  if (!value || typeof value !== 'object') {
+    return false;
+  }
+
+  return (
+    (!value.cache || isCache(value.cache)) &&
+    (!value.mode || Object.values(CacheMode).includes(value.mode))
+  );
+}
+
+/**
+ * Parses a string value into a CacheMode enum value.
+ *
+ * @param value - The string value to parse
+ * @returns The corresponding CacheMode enum value or undefined if invalid
+ */
+export function parseCacheMode(value: string | undefined): CacheMode | undefined {
+  if (!value || value.trim() === '') return undefined;
+
+  switch (value.toUpperCase()) {
+    case CacheMode.OFF:
+      return CacheMode.OFF;
+    case CacheMode.ON:
+      return CacheMode.ON;
+    case CacheMode.UPDATE_ONLY:
+      return CacheMode.UPDATE_ONLY;
+    case CacheMode.READ_ONLY:
+      return CacheMode.READ_ONLY;
+    default:
+      return undefined;
+  }
 }

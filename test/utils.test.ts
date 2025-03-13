@@ -1,4 +1,21 @@
-import { generateCacheKey, isMethod, isObject } from '../src/utils';
+import {
+  generateCacheKey,
+  isMethod,
+  isObject,
+  isCache,
+  isFastForwardOptions,
+  parseCacheMode,
+} from '../src/utils';
+import { CacheMode } from '../src/types';
+
+// Create a mock Cache implementation for testing
+const mockCache = {
+  get: (_key: string | undefined) => undefined,
+  set: (_key: string | undefined, _value: any) => {},
+  has: (_key: string | undefined) => false,
+  delete: (_key: string | undefined) => false,
+  clear: () => {},
+};
 
 describe('Utils', () => {
   describe('generateCacheKey', () => {
@@ -75,6 +92,7 @@ describe('Utils', () => {
       expect(isMethod(obj, symbolKey)).toBe(true);
     });
   });
+
   describe('isObject', () => {
     it('should identify objects correctly', () => {
       expect(isObject({})).toBe(true);
@@ -84,6 +102,79 @@ describe('Utils', () => {
       expect(isObject(42)).toBe(false);
       expect(isObject(null)).toBe(false);
       expect(isObject(undefined)).toBe(false);
+    });
+  });
+
+  describe('isCache', () => {
+    it('should identify Cache implementations correctly', () => {
+      // Valid Cache implementation
+      expect(isCache(mockCache)).toBe(true);
+
+      // Invalid implementations
+      expect(isCache({})).toBe(false);
+      expect(isCache(null)).toBe(false);
+      expect(isCache(undefined)).toBe(false);
+      expect(isCache('string')).toBe(false);
+      expect(isCache(42)).toBe(false);
+
+      // Partial implementations
+      expect(isCache({ get: () => {}, set: () => {} })).toBe(false);
+      expect(
+        isCache({
+          get: () => {},
+          set: () => {},
+          has: () => false,
+          delete: () => false,
+          // missing clear
+        })
+      ).toBe(false);
+    });
+  });
+
+  describe('isFastForwardOptions', () => {
+    it('should identify FastForwardOptions correctly', () => {
+      // Valid options
+      expect(isFastForwardOptions({})).toBe(true);
+      expect(isFastForwardOptions({ cache: mockCache })).toBe(true);
+      expect(isFastForwardOptions({ mode: CacheMode.ON })).toBe(true);
+      expect(isFastForwardOptions({ cache: mockCache, mode: CacheMode.OFF })).toBe(true);
+
+      // Invalid options
+      expect(isFastForwardOptions(null)).toBe(false);
+      expect(isFastForwardOptions(undefined)).toBe(false);
+      expect(isFastForwardOptions('string')).toBe(false);
+      expect(isFastForwardOptions(42)).toBe(false);
+
+      // Invalid cache property
+      expect(isFastForwardOptions({ cache: {} })).toBe(false);
+      expect(isFastForwardOptions({ cache: 'not a cache' })).toBe(false);
+
+      // Invalid mode property
+      expect(isFastForwardOptions({ mode: 'invalid' })).toBe(false);
+      expect(isFastForwardOptions({ mode: 123 })).toBe(false);
+    });
+  });
+
+  describe('parseCacheMode', () => {
+    it('should parse valid cache mode strings', () => {
+      expect(parseCacheMode('ON')).toBe(CacheMode.ON);
+      expect(parseCacheMode('OFF')).toBe(CacheMode.OFF);
+      expect(parseCacheMode('UPDATE_ONLY')).toBe(CacheMode.UPDATE_ONLY);
+      expect(parseCacheMode('READ_ONLY')).toBe(CacheMode.READ_ONLY);
+
+      // Case insensitivity
+      expect(parseCacheMode('on')).toBe(CacheMode.ON);
+      expect(parseCacheMode('Off')).toBe(CacheMode.OFF);
+      expect(parseCacheMode('update_only')).toBe(CacheMode.UPDATE_ONLY);
+      expect(parseCacheMode('read_ONLY')).toBe(CacheMode.READ_ONLY);
+    });
+
+    it('should handle invalid or empty input', () => {
+      expect(parseCacheMode('')).toBeUndefined();
+      expect(parseCacheMode('   ')).toBeUndefined();
+      expect(parseCacheMode(undefined)).toBeUndefined();
+      expect(parseCacheMode('INVALID_MODE')).toBeUndefined();
+      expect(parseCacheMode('123')).toBeUndefined();
     });
   });
 });

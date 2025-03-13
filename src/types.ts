@@ -1,4 +1,44 @@
 /**
+ * Cache operation modes.
+ */
+export enum CacheMode {
+  /**
+   * Normal caching behavior (default) - read from cache if available, otherwise compute and store.
+   */
+  ON = 'ON',
+
+  /**
+   * Disable caching completely - always compute fresh results and don't store them.
+   */
+  OFF = 'OFF',
+
+  /**
+   * Force update mode - always compute fresh results but store them for future use.
+   */
+  UPDATE_ONLY = 'UPDATE_ONLY',
+
+  /**
+   * Read-only mode - only read from cache, don't compute if not found.
+   */
+  READ_ONLY = 'READ_ONLY',
+}
+
+/**
+ * Options for fastForward function.
+ */
+export interface FastForwardOptions {
+  /**
+   * The cache implementation to use
+   */
+  cache?: Cache;
+
+  /**
+   * The cache mode to use
+   */
+  mode?: CacheMode;
+}
+
+/**
  * Interface for cache implementations.
  */
 export interface Cache {

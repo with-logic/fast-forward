@@ -1,5 +1,5 @@
-import { fastForward as ff, InMemoryCache } from '../src';
-import type { Cache } from '../src';
+import { fastForward as ff, InMemoryCache, CacheMode } from '../src';
+import type { Cache, FastForwardOptions } from '../src';
 
 describe('fastForward', () => {
   // Test Promise support
@@ -401,6 +401,331 @@ describe('fastForward', () => {
       'has:method:[5]',
       'get:method:[5]',
     ]);
+  });
+
+  // Test different cache modes
+  describe('cache modes', () => {
+    // Test OFF mode
+    it('should disable caching when mode is OFF', () => {
+      let calls = 0;
+      const testObj = {
+        method: (x: number) => {
+          calls++;
+          return x * 2;
+        },
+      };
+
+      const cache = new InMemoryCache();
+      const options: FastForwardOptions = { cache, mode: CacheMode.OFF };
+      const cachedObj = ff(testObj, options);
+
+      // First call - normal execution
+      expect(cachedObj.method(5)).toBe(10);
+      expect(calls).toBe(1);
+
+      // Second call - should execute again because caching is OFF
+      expect(cachedObj.method(5)).toBe(10);
+      expect(calls).toBe(2);
+    });
+
+    // Test UPDATE_ONLY mode
+    it('should always update cache when mode is UPDATE_ONLY', () => {
+      let counter = 0;
+      const testObj = {
+        getCounter: () => {
+          return counter++;
+        },
+      };
+
+      const cache = new InMemoryCache();
+      const options: FastForwardOptions = { cache, mode: CacheMode.UPDATE_ONLY };
+      const cachedObj = ff(testObj, options);
+
+      // First call - returns 0, counter becomes 1
+      expect(cachedObj.getCounter()).toBe(0);
+      expect(counter).toBe(1);
+
+      // Second call - should execute again and return 1 (not cached), counter becomes 2
+      expect(cachedObj.getCounter()).toBe(1);
+      expect(counter).toBe(2);
+
+      // Switch to normal mode to verify values were cached
+      const normalObj = ff(testObj, { cache, mode: CacheMode.ON });
+
+      // This should return the latest cached value (1)
+      expect(normalObj.getCounter()).toBe(1);
+      // Counter should not increment as we're using the cache
+      expect(counter).toBe(2);
+    });
+
+    // Test READ_ONLY mode
+    it('should only read from cache when mode is READ_ONLY', () => {
+      let calls = 0;
+      const testObj = {
+        method: (x: number) => {
+          calls++;
+          return x * 2;
+        },
+      };
+
+      const cache = new InMemoryCache();
+
+      // First, populate the cache using normal mode
+      const normalObj = ff(testObj, cache);
+      expect(normalObj.method(5)).toBe(10);
+      expect(calls).toBe(1);
+
+      // Now switch to READ_ONLY mode
+      const readOnlyObj = ff(testObj, { cache, mode: CacheMode.READ_ONLY });
+
+      // Should read from cache without executing the method
+      expect(readOnlyObj.method(5)).toBe(10);
+      expect(calls).toBe(1); // No additional calls
+
+      // Should return undefined for uncached values
+      expect(readOnlyObj.method(10)).toBeUndefined();
+      expect(calls).toBe(1); // Still no additional calls
+    });
+
+    // Test options compatibility
+    it('should accept a Cache implementation directly for backward compatibility', () => {
+      let calls = 0;
+      const testObj = {
+        method: (x: number) => {
+          calls++;
+          return x * 2;
+        },
+      };
+
+      const cache = new InMemoryCache();
+      const cachedObj = ff(testObj, cache); // Old style
+
+      // Should still work with normal caching behavior
+      expect(cachedObj.method(5)).toBe(10);
+      expect(calls).toBe(1);
+
+      expect(cachedObj.method(5)).toBe(10);
+      expect(calls).toBe(1); // No additional calls (using cache)
+    });
+
+    // Test environment variable override (mocking process.env)
+    it('should have explicit options override environment variables', () => {
+      // Save original process.env
+      const originalEnv = process.env.FASTFORWARD_MODE;
+
+      try {
+        // Set environment variable
+        process.env.FASTFORWARD_MODE = 'OFF';
+
+        let calls = 0;
+        const testObj = {
+          method: (x: number) => {
+            calls++;
+            return x * 2;
+          },
+        };
+
+        const cache = new InMemoryCache();
+        // Explicit ON mode should override env OFF mode
+        const cachedObj = ff(testObj, { cache, mode: CacheMode.ON });
+
+        // First call - normal execution
+        expect(cachedObj.method(5)).toBe(10);
+        expect(calls).toBe(1);
+
+        // Second call - should use cache because explicit options override env
+        expect(cachedObj.method(5)).toBe(10);
+        expect(calls).toBe(1); // Still 1, using cache despite env=OFF
+
+        // Test environment variable works when no explicit mode is provided
+        const envCachedObj = ff(testObj, { cache });
+
+        // First call - normal execution
+        expect(envCachedObj.method(5)).toBe(10);
+        expect(calls).toBe(2); // Increased to 2
+
+        // Second call - should execute again because env=OFF is used
+        expect(envCachedObj.method(5)).toBe(10);
+        expect(calls).toBe(3); // Increased to 3, not using cache
+      } finally {
+        // Restore original environment or unset if it wasn't set
+        if (originalEnv === undefined) {
+          delete process.env.FASTFORWARD_MODE;
+        } else {
+          process.env.FASTFORWARD_MODE = originalEnv;
+        }
+      }
+    });
+
+    it('should handle invalid environment variable values', () => {
+      // Save original process.env
+      const originalEnv = process.env.FASTFORWARD_MODE;
+
+      try {
+        // Set invalid environment variable
+        process.env.FASTFORWARD_MODE = 'INVALID_MODE';
+
+        let calls = 0;
+        const testObj = {
+          method: (x: number) => {
+            calls++;
+            return x * 2;
+          },
+        };
+
+        const cache = new InMemoryCache();
+        // Use normal mode in code, and env should be ignored because invalid
+        const cachedObj = ff(testObj, { cache, mode: CacheMode.ON });
+
+        // First call - normal execution
+        expect(cachedObj.method(5)).toBe(10);
+        expect(calls).toBe(1);
+
+        // Second call - should use cache because env was invalid
+        expect(cachedObj.method(5)).toBe(10);
+        expect(calls).toBe(1); // Still 1, not increased
+      } finally {
+        // Restore original environment or unset if it wasn't set
+        if (originalEnv === undefined) {
+          delete process.env.FASTFORWARD_MODE;
+        } else {
+          process.env.FASTFORWARD_MODE = originalEnv;
+        }
+      }
+    });
+
+    it('should handle case-insensitive environment variable values', () => {
+      // Save original process.env
+      const originalEnv = process.env.FASTFORWARD_MODE;
+
+      try {
+        // Set lowercase environment variable
+        process.env.FASTFORWARD_MODE = 'off';
+
+        let calls = 0;
+        const testObj = {
+          method: (x: number) => {
+            calls++;
+            return x * 2;
+          },
+        };
+
+        const cache = new InMemoryCache();
+        // Without explicit mode, should use env 'off' value
+        const cachedObj = ff(testObj, { cache });
+
+        // First call - normal execution
+        expect(cachedObj.method(5)).toBe(10);
+        expect(calls).toBe(1);
+
+        // Second call - should execute again due to OFF mode from env
+        expect(cachedObj.method(5)).toBe(10);
+        expect(calls).toBe(2); // Increased to 2, not using cache
+
+        // With explicit mode, should override env
+        const explicitObj = ff(testObj, { cache, mode: CacheMode.ON });
+
+        // First call
+        expect(explicitObj.method(5)).toBe(10);
+        expect(calls).toBe(3);
+
+        // Second call - should use cache despite env=off
+        expect(explicitObj.method(5)).toBe(10);
+        expect(calls).toBe(3); // Still 3, using cache
+      } finally {
+        // Restore original environment or unset if it wasn't set
+        if (originalEnv === undefined) {
+          delete process.env.FASTFORWARD_MODE;
+        } else {
+          process.env.FASTFORWARD_MODE = originalEnv;
+        }
+      }
+    });
+
+    it('should test all environment variable modes and option overrides', () => {
+      // Save original process.env
+      const originalEnv = process.env.FASTFORWARD_MODE;
+
+      try {
+        let calls = 0;
+        const testObj = {
+          method: (x: number) => {
+            calls++;
+            return x * 2;
+          },
+        };
+
+        const cache = new InMemoryCache();
+
+        // First fill the cache with a normal instance
+        process.env.FASTFORWARD_MODE = ''; // Clear env var
+        const normalObj = ff(testObj, { cache });
+        expect(normalObj.method(5)).toBe(10);
+        expect(calls).toBe(1);
+
+        // Test READ_ONLY mode via environment
+        process.env.FASTFORWARD_MODE = 'READ_ONLY';
+        const readOnlyObj = ff(testObj, { cache });
+
+        // Should read from cache
+        expect(readOnlyObj.method(5)).toBe(10);
+        expect(calls).toBe(1); // Still 1, using cache
+
+        // Test uncached value should return undefined in READ_ONLY mode
+        expect(readOnlyObj.method(10)).toBeUndefined();
+        expect(calls).toBe(1); // Still 1, not executed
+
+        // Test option override: READ_ONLY env with explicit OFF mode
+        const overrideObj = ff(testObj, { cache, mode: CacheMode.OFF });
+
+        // Should execute despite READ_ONLY in env
+        expect(overrideObj.method(5)).toBe(10);
+        expect(calls).toBe(2); // Increased to 2
+
+        // Test UPDATE_ONLY mode via environment
+        process.env.FASTFORWARD_MODE = 'UPDATE_ONLY';
+        const updateOnlyObj = ff(testObj, { cache });
+
+        // Should execute method even though it was cached
+        expect(updateOnlyObj.method(5)).toBe(10);
+        expect(calls).toBe(3); // Increased to 3
+
+        // Test option override: UPDATE_ONLY env with explicit ON mode
+        const updateOverrideObj = ff(testObj, { cache, mode: CacheMode.ON });
+
+        // Should use cache despite UPDATE_ONLY in env
+        expect(updateOverrideObj.method(5)).toBe(10);
+        expect(calls).toBe(3); // Still 3, using cache
+
+        // Test ON mode via environment
+        process.env.FASTFORWARD_MODE = 'ON';
+        const onModeObj = ff(testObj, { cache });
+
+        // Should use cache
+        expect(onModeObj.method(5)).toBe(10);
+        expect(calls).toBe(3); // Still 3, using cache
+
+        // Check if empty env variable defaults to default ON mode
+        process.env.FASTFORWARD_MODE = '';
+        const emptyEnvObj = ff(testObj, { cache });
+
+        // Should use default ON mode
+        const newValue = 8;
+        expect(emptyEnvObj.method(newValue)).toBe(newValue * 2);
+        expect(calls).toBe(4); // Increased to 4 (new value)
+
+        // Second call to same method should use cache
+        expect(emptyEnvObj.method(newValue)).toBe(newValue * 2);
+        expect(calls).toBe(4); // Still 4, using cache
+      } finally {
+        // Restore original environment or unset if it wasn't set
+        if (originalEnv === undefined) {
+          delete process.env.FASTFORWARD_MODE;
+        } else {
+          process.env.FASTFORWARD_MODE = originalEnv;
+        }
+      }
+    });
   });
 
   it('should provide consistent cache keys regardless of object property order', () => {
