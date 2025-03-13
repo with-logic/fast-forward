@@ -39,7 +39,7 @@ jobs:
 
       - name: Bump version
         run: |
-          npm version patch -m "Bump version to %s [skip ci]"
+          npm version patch -m "Bump version to %s [auto]"
           git push --follow-tags
 
       - name: Publish to NPM
