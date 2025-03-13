@@ -20,13 +20,13 @@ A TypeScript library that wraps objects in a cache-aware Proxy for faster method
 ## Installation
 
 ```bash
-npm install fast-forward
+npm install @with-logic/fast-forward
 ```
 
 ## Usage
 
 ```typescript
-import { fastForward as ff, FileSystemCache } from 'fast-forward';
+import { fastForward as ff, FileSystemCache } from '@with-logic/fast-forward';
 
 // Create an object with expensive methods
 const calculator = {
@@ -76,7 +76,7 @@ console.log(cachedCalculator.fibonacci(5)); // Will only calculate each fibonacc
 fast-forward is particularly useful for testing applications that use API clients like OpenAI:
 
 ```typescript
-import { fastForward as ff, FileSystemCache } from 'fast-forward';
+import { fastForward as ff, FileSystemCache } from '@with-logic/fast-forward';
 import OpenAI from 'openai';
 
 // Create the OpenAI client
@@ -130,7 +130,7 @@ This approach is ideal for testing, as it allows you to:
 fast-forward works seamlessly with async methods:
 
 ```typescript
-import { fastForward as ff } from 'fast-forward';
+import { fastForward as ff } from '@with-logic/fast-forward';
 
 const api = {
   fetchUser: async (id: string) => {
@@ -162,7 +162,7 @@ Failed promises (rejections) are not cached, so they will be retried on subseque
 fast-forward supports different cache operation modes to control caching behavior:
 
 ```typescript
-import { fastForward as ff, CacheMode, FileSystemCache } from 'fast-forward';
+import { fastForward as ff, CacheMode, FileSystemCache } from '@with-logic/fast-forward';
 
 const calculator = {
   add: (a: number, b: number) => {
@@ -208,7 +208,7 @@ This environment variable approach is especially useful for testing scenarios wh
 fast-forward provides two cache implementations:
 
 ```typescript
-import { fastForward as ff, FileSystemCache, InMemoryCache } from 'fast-forward';
+import { fastForward as ff, FileSystemCache, InMemoryCache } from '@with-logic/fast-forward';
 import * as path from 'path';
 
 // By default, fastForward uses InMemoryCache (no persistence)
@@ -251,7 +251,7 @@ To avoid tracking cache files in your repository, add this to your `.gitignore`:
 You can also provide a custom cache implementation to control cache behavior:
 
 ```typescript
-import { fastForward as ff, type Cache } from 'fast-forward';
+import { fastForward as ff, type Cache } from '@with-logic/fast-forward';
 
 // Create a custom cache with a max size
 class LRUCache implements Cache {
