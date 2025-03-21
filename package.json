@@ -4,7 +4,6 @@
   "description": "A TypeScript library that wraps objects in a cache-aware Proxy for faster method calls",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
-  "type": "module",
   "files": [
     "dist/src"
   ],
