@@ -1,4 +1,4 @@
-import { Cache, CacheMode, FastForwardOptions } from './types';
+import { Cache, CacheMode, FastForwardOptions, KeyTransformer } from './types';
 import { InMemoryCache } from './in-memory-cache';
 import {
   generateCacheKey,
@@ -41,6 +41,7 @@ export function fastForward<T extends object>(
   // Default values
   let cache: Cache = new InMemoryCache();
   let mode: CacheMode = CacheMode.ON;
+  let keyFn: KeyTransformer | undefined;
 
   // Get environment variable mode first (lowest priority)
   const envMode = getCacheModeFromEnv();
@@ -61,6 +62,9 @@ export function fastForward<T extends object>(
       // Explicit mode in options overrides environment variable
       mode = options.mode;
     }
+    if (options.key) {
+      keyFn = options.key;
+    }
   }
 
   return new Proxy(target, {
@@ -71,7 +75,7 @@ export function fastForward<T extends object>(
       // recursively wrap them in a proxy
       if (!isMethod(obj, prop)) {
         if (isObject(value)) {
-          return fastForward(value as any, { cache, mode });
+          return fastForward(value as any, { cache, mode, key: keyFn });
         }
         return value;
       }
@@ -82,7 +86,7 @@ export function fastForward<T extends object>(
       return function (this: any, ...args: any[]) {
         // Create a unique key for the method, taking into account the 'this' context
         // This ensures proper handling of methods that depend on 'this'
-        const cacheKey = generateCacheKey(`${String(prop)}`, args);
+        const cacheKey = generateCacheKey(`${String(prop)}`, args, keyFn);
 
         // If caching is completely disabled
         if (mode === CacheMode.OFF) {

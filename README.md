@@ -13,6 +13,7 @@ A TypeScript library that wraps objects in a cache-aware Proxy for faster method
 - Transparently caches method calls using a Proxy
 - Cache hits return previous results immediately without re-execution
 - Supports in-memory caching (default) and persistent filesystem caching
+- Configurable cache key transformation for custom caching strategies
 - Full TypeScript support with preserved types
 - Minimal dependencies
 - 100% test coverage
@@ -157,6 +158,59 @@ Failed promises (rejections) are not cached, so they will be retried on subseque
 
 ## Advanced Usage
 
+### Cache Key Transformation
+
+fast-forward allows you to customize how cache keys are generated using a key transformer function:
+
+```typescript
+import { fastForward as ff, type KeyComponents } from '@with-logic/fast-forward';
+
+// Object with methods to cache
+const api = {
+  fetchUser: (userId: string, timestamp: number) => {
+    console.log(`Fetching user ${userId} at ${timestamp}`);
+    return { id: userId, name: `User ${userId}` };
+  }
+};
+
+// Create a transformer that ignores the timestamp parameter
+const ignoreTimestampTransformer = (method: string, args: any[]): KeyComponents => {
+  // Make a copy of the arguments array to avoid modifying the original
+  const stableArgs = [...args];
+  
+  // For fetchUser, remove the timestamp (second parameter)
+  if (method === 'fetchUser' && args.length >= 2) {
+    stableArgs[1] = null; // Replace timestamp with null
+  }
+  
+  // Return transformed method and args components
+  return {
+    method, // Keep original method name
+    args: stableArgs, // Use modified args
+  };
+};
+
+// Use the transformer when creating the proxy
+const cachedApi = ff(api, { key: ignoreTimestampTransformer });
+
+// First call - executes the method
+cachedApi.fetchUser('123', Date.now()); // Logs: "Fetching user 123 at 1620000000000"
+
+// Second call with different timestamp - uses cache despite timestamp difference
+cachedApi.fetchUser('123', Date.now() + 1000); // No log, returns from cache
+
+// Different user ID - executes the method
+cachedApi.fetchUser('456', Date.now()); // Logs: "Fetching user 456 at 1620000000000"
+```
+
+Key transformers enable powerful caching patterns:
+
+1. **Ignore volatile parameters** - Exclude timestamps, random IDs, or other changing values that shouldn't invalidate cache
+2. **Normalize arguments** - Standardize arguments for consistent caching regardless of format variations
+3. **Cross-method caching** - Share cache entries between different methods when they produce the same results
+4. **Semantic caching** - Group cache entries based on the purpose rather than exact method names
+5. **Handle non-serializable arguments** - Provide stable representations for circular references or other complex objects
+
 ### Cache Modes
 
 fast-forward supports different cache operation modes to control caching behavior:
@@ -293,6 +347,7 @@ Wraps an object with a cache-aware Proxy.
 - `options?`: Either a Cache implementation (for backward compatibility) or FastForwardOptions:
   - `cache?`: Optional cache implementation (defaults to InMemoryCache)
   - `mode?`: Optional cache mode (defaults to CacheMode.ON)
+  - `key?`: Optional function to transform cache key components (method name and arguments)
 - Returns: A proxied version of the target with caching
 
 ### CacheMode
@@ -303,6 +358,23 @@ An enum defining different caching behaviors:
 - `CacheMode.OFF`: Disable caching completely - always compute fresh results, don't store
 - `CacheMode.UPDATE_ONLY`: Force update mode - always compute fresh results but store for future use
 - `CacheMode.READ_ONLY`: Read-only mode - only read from cache, return undefined if not found
+
+### KeyTransformer and KeyComponents
+
+Types for key transformation:
+
+```typescript
+// Return type for key transformation function
+interface KeyComponents {
+  method: string;
+  args: any[];
+}
+
+// Function type for transforming cache keys
+type KeyTransformer = (method: string, args: any[]) => KeyComponents;
+```
+
+The key transformer function receives the method name and arguments, allowing you to modify either or both before they're used to generate a cache key.
 
 ### InMemoryCache
 

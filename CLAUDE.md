@@ -1,4 +1,10 @@
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 # Fast-Forward Project Guidelines
+
+See ARCHITECTURE.md for details about the project architecture, components, and design patterns.
 
 ## Build and Test Commands
 ```bash
