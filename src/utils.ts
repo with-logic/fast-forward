@@ -1,5 +1,5 @@
 import stringify from 'json-stable-stringify';
-import { Cache, CacheMode, FastForwardOptions } from './types';
+import { Cache, CacheMode, FastForwardOptions, KeyTransformer } from './types';
 
 /**
  * Generates a cache key based on method name and arguments.
@@ -7,15 +7,31 @@ import { Cache, CacheMode, FastForwardOptions } from './types';
  *
  * @param methodName - Name of the method being called
  * @param args - Arguments passed to the method
+ * @param keyTransformer - Optional function to transform the method and arguments
  * @returns A string key for cache lookup
  */
-export function generateCacheKey(methodName: string, args: any[]): string | undefined {
+export function generateCacheKey(
+  methodName: string,
+  args: any[],
+  keyTransformer?: KeyTransformer
+): string | undefined {
   try {
-    const serializedArgs = stringify(args);
-    return `${methodName}:${serializedArgs}`;
+    // Apply key transformer if provided
+    let method = methodName;
+    let transformedArgs = args;
+
+    if (keyTransformer) {
+      const transformed = keyTransformer(methodName, args);
+      method = transformed.method;
+      transformedArgs = transformed.args;
+    }
+
+    // Generate the key from the (potentially transformed) method and arguments
+    const serializedArgs = stringify(transformedArgs);
+    return `${method}:${serializedArgs}`;
   } catch (e) {
     // If arguments can't be serialized (e.g., contain circular references),
-    // fall back to a less reliable but functional approach
+    // fall back to undefined
     return undefined;
   }
 }
@@ -78,7 +94,8 @@ export function isFastForwardOptions(value: any): value is FastForwardOptions {
 
   return (
     (!value.cache || isCache(value.cache)) &&
-    (!value.mode || Object.values(CacheMode).includes(value.mode))
+    (!value.mode || Object.values(CacheMode).includes(value.mode)) &&
+    (!value.key || typeof value.key === 'function')
   );
 }
 

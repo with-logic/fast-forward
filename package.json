@@ -17,7 +17,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint 'src/**/*.ts' 'test/**/*.ts'",
-    "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts'",
+    "format": "prettier --write 'src/**/*.ts' 'test/**/*.ts' examples/**/*.ts",
     "format:check": "prettier --check 'src/**/*.ts' 'test/**/*.ts'",
     "check": "npm run build && npm run test && npm run lint && npm run format:check",
     "prepare": "npm run build",

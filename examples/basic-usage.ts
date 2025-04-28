@@ -7,17 +7,17 @@ const calculator = {
     console.log('Calculating add...');
     return a + b;
   },
-  
+
   fibonacci: (n: number): number => {
     console.log(`Calculating fibonacci(${n})...`);
     if (n <= 1) return n;
     return calculator.fibonacci(n - 1) + calculator.fibonacci(n - 2);
   },
-  
+
   randomValue: (): number => {
     console.log('Generating random value...');
     return Math.random();
-  }
+  },
 };
 
 // Demonstrate different cache options
@@ -31,13 +31,13 @@ const memoryCalculator = ff(calculator, memoryCache);
 
 // Option 3: Persistent file system cache with custom directory
 const fileSystemCache = new FileSystemCache({
-  cacheDir: path.join(process.cwd(), '.my-custom-cache')
+  cacheDir: path.join(process.cwd(), '.my-custom-cache'),
 });
 const diskCalculator = ff(calculator, fileSystemCache);
 
 // Option 3b: File system cache with namespace
 const namespacedCache = new FileSystemCache({
-  namespace: 'my-calculator-app'
+  namespace: 'my-calculator-app',
 });
 const namespacedCalculator = ff(calculator, namespacedCache);
 
@@ -71,7 +71,7 @@ console.log(nonPersistentCalculator.add(30, 40)); // Second call - cached from m
 console.log('\n--- Recursive function optimization ---');
 console.log(`fibonacci(5) = ${diskCalculator.fibonacci(5)}`);
 
-// Demo random value caching 
+// Demo random value caching
 console.log('\n--- Random value caching ---');
 console.log(`Random value: ${diskCalculator.randomValue()}`);
 console.log(`Same random value from cache: ${diskCalculator.randomValue()}`);
@@ -83,7 +83,7 @@ console.log(namespacedCalculator.add(5, 5)); // First call - executes & caches i
 console.log(namespacedCalculator.add(5, 5)); // Second call - reads from namespaced cache
 console.log('Cache files stored in: .fastforward-cache/my-calculator-app/');
 
-// Create a second instance with a different namespace 
+// Create a second instance with a different namespace
 const otherNamespace = new FileSystemCache({ namespace: 'other-app' });
 const otherCalculator = ff(calculator, otherNamespace);
 console.log('\nSeparate namespaces keep caches isolated:');
@@ -91,7 +91,7 @@ console.log(otherCalculator.add(5, 5)); // Executes because this namespace doesn
 console.log(otherCalculator.add(5, 5)); // Now it's cached in the other namespace
 
 // Note: Cache invalidation is not directly supported in this version.
-// To invalidate the cache, you would need to create a new cache instance or 
+// To invalidate the cache, you would need to create a new cache instance or
 // manually clear the underlying cache.
 
 // Example of clearing a cache (completely)

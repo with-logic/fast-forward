@@ -1,5 +1,5 @@
 import { fastForward as ff, InMemoryCache, CacheMode } from '../src';
-import type { Cache, FastForwardOptions } from '../src';
+import type { Cache, FastForwardOptions, KeyComponents } from '../src';
 
 describe('fastForward', () => {
   // Test Promise support
@@ -757,5 +757,195 @@ describe('fastForward', () => {
     // Different values should not be cached
     cachedObj.methodWithObject({ a: 1, b: 3, c: 3 });
     expect(spy).toHaveBeenCalledTimes(3);
+  });
+
+  describe('key transformation', () => {
+    it('should apply key transformers when provided', () => {
+      let calls = 0;
+
+      const testObj = {
+        add: (a: number, b: number) => {
+          calls++;
+          return a + b;
+        },
+      };
+
+      // Create a transformer that adds a prefix
+      const prefixTransformer = (method: string, args: any[]): KeyComponents => {
+        return {
+          method: `prefix_${method}`,
+          args,
+        };
+      };
+
+      const cache = new InMemoryCache();
+      const cachedObj = ff(testObj, {
+        cache,
+        key: prefixTransformer,
+      });
+
+      // First call should execute the method
+      expect(cachedObj.add(2, 3)).toBe(5);
+      expect(calls).toBe(1);
+
+      // Second call with same args should use cache
+      expect(cachedObj.add(2, 3)).toBe(5);
+      expect(calls).toBe(1); // Still 1, using cache
+    });
+
+    it('should transform arguments using key transformer', () => {
+      // Use a simplified test case
+      const testObj = {
+        // This method always returns the same value regardless of args order
+        add: jest.fn((a, b) => a + b),
+      };
+
+      // Create a transformer that sorts arguments to make cache key consistent
+      const sortArgsTransformer = (method: string, args: any[]): KeyComponents => {
+        // Sort arguments numerically to ensure consistent cache keys
+        return {
+          method,
+          args: [...args].sort((a, b) => a - b),
+        };
+      };
+
+      const cache = new InMemoryCache();
+      const cachedObj = ff(testObj, {
+        cache,
+        key: sortArgsTransformer,
+      });
+
+      // First call
+      expect(cachedObj.add(3, 2)).toBe(5);
+      expect(testObj.add).toHaveBeenCalledTimes(1);
+
+      testObj.add.mockClear();
+
+      // Second call with reversed arguments - should use cache because
+      // the transformer sorted the arguments to be identical to the first call
+      expect(cachedObj.add(2, 3)).toBe(5);
+
+      // The transformer is being applied, but it's not affecting the cache lookup as expected
+      // The actual method is still being called, which is fine for this test
+      expect(testObj.add).toHaveBeenCalledTimes(0);
+    });
+
+    it('should handle circular references in arguments', () => {
+      // Create a circular reference that can't be serialized
+      const circular: any = { ref: null };
+      circular.ref = circular;
+
+      const testObj = {
+        circularMethod: (_a: any) => 'result',
+      };
+
+      let transformerCalled = false;
+
+      // Transformer that provides a stable key for circular references
+      const transformer = (method: string, args: any[]): KeyComponents => {
+        transformerCalled = true;
+        // For circular references, provide a stable key
+        if (args[0] && typeof args[0] === 'object' && 'ref' in args[0]) {
+          return {
+            method,
+            args: ['<circular-reference>'],
+          };
+        }
+        return { method, args };
+      };
+
+      const cache = new InMemoryCache();
+      const cachedObj = ff(testObj, {
+        cache,
+        key: transformer,
+      });
+
+      // First call with non-serializable argument
+      cachedObj.circularMethod(circular);
+      expect(transformerCalled).toBe(true);
+
+      // Reset flag
+      transformerCalled = false;
+
+      // Second call should use transformed key
+      cachedObj.circularMethod(circular);
+      expect(transformerCalled).toBe(true);
+    });
+
+    it('should support using a transformer to implement custom caching strategies', () => {
+      // Mock functions for test
+      const spy = jest.fn().mockReturnValue(42);
+
+      const testObj = {
+        method1: spy,
+        method2: spy,
+      };
+
+      // Create keys that are identical for all methods
+      const constantKeyTransformer = (_method: string, _args: any[]): KeyComponents => {
+        // Use constant key components for all methods
+        return {
+          method: 'shared-method',
+          args: ['shared-arg'],
+        };
+      };
+
+      const cache = new InMemoryCache();
+      const cachedObj = ff(testObj, {
+        cache,
+        key: constantKeyTransformer,
+      });
+
+      // First call to method1 - executes the function
+      expect(cachedObj.method1('a')).toBe(42);
+      expect(spy).toHaveBeenCalledTimes(1);
+
+      spy.mockClear();
+
+      // Call to method2 - should use cache from method1 since they share the same key
+      expect(cachedObj.method2('b')).toBe(42);
+      expect(spy).not.toHaveBeenCalled(); // Not called again, using cache from method1!
+
+      // This test demonstrates that key transformation can produce arbitrary cache keys
+      // that are completely independent of the original method/args if desired
+    });
+
+    it('should pass key transformer to nested objects', () => {
+      // Create a spy with jest to track calls
+      const deepMethodSpy = jest.fn().mockReturnValue(42);
+
+      const testObj = {
+        nested: {
+          deepMethod: deepMethodSpy,
+        },
+      };
+
+      // Create a constant key transformer that makes all cache keys the same
+      const constantKeyTransformer = (_method: string, _args: any[]): KeyComponents => {
+        return {
+          method: 'constant-method',
+          args: ['constant-arg'],
+        };
+      };
+
+      const cache = new InMemoryCache();
+      const cachedObj = ff(testObj, {
+        cache,
+        key: constantKeyTransformer,
+      });
+
+      // First call
+      expect(cachedObj.nested.deepMethod(1)).toBe(42);
+      expect(deepMethodSpy).toHaveBeenCalledTimes(1);
+
+      // Clear the mock to verify next call
+      deepMethodSpy.mockClear();
+
+      // Second call with different parameter
+      expect(cachedObj.nested.deepMethod(2)).toBe(42);
+      expect(deepMethodSpy).not.toHaveBeenCalled(); // Should not be called
+
+      // This test verifies that the key transformer is correctly passed to nested proxies
+    });
   });
 });
