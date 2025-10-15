@@ -1,6 +1,6 @@
 {
   "name": "@with-logic/fast-forward",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "A TypeScript library that wraps objects in a cache-aware Proxy for faster method calls",
   "main": "dist/src/index.js",
   "types": "dist/src/index.d.ts",
@@ -22,7 +22,12 @@
     "check": "npm run build && npm run test && npm run lint && npm run format:check",
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run format && npm run lint",
-    "coverage": "jest --coverage"
+    "coverage": "jest --coverage",
+    "prepare-release": "node scripts/publish.js",
+    "release": "node scripts/release.js"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
   },
   "keywords": [
     "cache",
