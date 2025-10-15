@@ -43,6 +43,28 @@ function getCurrentVersion() {
   return packageJson.version;
 }
 
+function getLatestPublishedVersion() {
+  // Fetch latest tags from remote
+  exec('git fetch --tags', { ignoreError: true });
+
+  // Get the latest version tag
+  const latestTag = exec('git tag --sort=-v:refname | head -1', { ignoreError: true });
+
+  if (latestTag && latestTag.startsWith('v')) {
+    return latestTag.substring(1); // Strip 'v' prefix
+  }
+
+  // Fallback to package.json version if no tags exist
+  return getCurrentVersion();
+}
+
+function updatePackageVersion(version) {
+  const packageJsonPath = path.join(__dirname, '..', 'package.json');
+  const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf8'));
+  packageJson.version = version;
+  fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2) + '\n', 'utf8');
+}
+
 function calculateNextVersion(current, bump) {
   const [major, minor, patch] = current.split('.').map(Number);
   switch (bump) {
@@ -102,9 +124,23 @@ async function main() {
   const branch = getCurrentBranch();
   log(`\nCurrent branch: ${branch}`, 'cyan');
 
-  // Get current version
+  // Get latest published version from git tags
+  const latestPublishedVersion = getLatestPublishedVersion();
+  const packageJsonVersion = getCurrentVersion();
+
+  // Sync package.json with latest published version if needed
+  if (latestPublishedVersion !== packageJsonVersion) {
+    log(`\n⚠️  Version mismatch detected:`, 'yellow');
+    log(`   package.json: ${packageJsonVersion}`, 'dim');
+    log(`   Latest published: ${latestPublishedVersion}`, 'dim');
+    log(`\n⚙️  Syncing package.json to latest published version...`, 'blue');
+    updatePackageVersion(latestPublishedVersion);
+    log(`✓ Updated package.json to ${latestPublishedVersion}`, 'green');
+  }
+
+  // Get current version (now synced with latest published)
   const currentVersion = getCurrentVersion();
-  log(`Current version: ${currentVersion}`, 'cyan');
+  log(`\nCurrent version: ${currentVersion}`, 'cyan');
 
   // Show version options
   log('\nSelect version bump:', 'bright');

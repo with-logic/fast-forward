@@ -26,9 +26,6 @@
     "prepare-release": "node scripts/publish.js",
     "release": "node scripts/release.js"
   },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
-  },
   "keywords": [
     "cache",
     "proxy",
