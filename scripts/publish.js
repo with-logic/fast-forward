@@ -43,6 +43,21 @@ function getCurrentVersion() {
   return packageJson.version;
 }
 
+function getLatestPublishedVersion() {
+  // Fetch latest tags from remote
+  exec('git fetch --tags', { ignoreError: true });
+
+  // Get the latest version tag
+  const latestTag = exec('git tag --sort=-v:refname | head -1', { ignoreError: true });
+
+  if (latestTag && latestTag.startsWith('v')) {
+    return latestTag.substring(1); // Strip 'v' prefix
+  }
+
+  // Fallback to package.json version if no tags exist
+  return getCurrentVersion();
+}
+
 function calculateNextVersion(current, bump) {
   const [major, minor, patch] = current.split('.').map(Number);
   switch (bump) {
@@ -72,6 +87,18 @@ function getCurrentBranch() {
   return exec('git rev-parse --abbrev-ref HEAD');
 }
 
+function requireMainBranch() {
+  const branch = getCurrentBranch();
+  if (branch !== 'main') {
+    log('\n❌ Error: Must be on main branch to prepare a release', 'red');
+    log(`\nCurrent branch: ${branch}`, 'dim');
+    log('\nPlease switch to main first:', 'yellow');
+    log('  git checkout main', 'dim');
+    log('  git pull\n', 'dim');
+    process.exit(1);
+  }
+}
+
 function tagExists(tag) {
   const result = exec(`git tag -l "${tag}"`, { ignoreError: true });
   return result && result.trim() === tag;
@@ -95,16 +122,30 @@ async function main() {
   log('\n📦 Fast-Forward - Release Preparation', 'bright');
   log('═'.repeat(50), 'dim');
 
+  // Must be on main branch
+  requireMainBranch();
+
   // Check git status
   checkGitStatus();
 
-  // Show current branch
-  const branch = getCurrentBranch();
-  log(`\nCurrent branch: ${branch}`, 'cyan');
+  log('\n✓ On main branch', 'green');
+  log('✓ Working directory is clean', 'green');
 
-  // Get current version
-  const currentVersion = getCurrentVersion();
-  log(`Current version: ${currentVersion}`, 'cyan');
+  // Get latest published version from git tags
+  const latestPublishedVersion = getLatestPublishedVersion();
+  const packageJsonVersion = getCurrentVersion();
+
+  // Show version info
+  log(`\npackage.json version: ${packageJsonVersion}`, 'dim');
+  log(`Latest published version: ${latestPublishedVersion}`, 'cyan');
+
+  if (latestPublishedVersion !== packageJsonVersion) {
+    log(`\n💡 Note: Will bump from latest published version (${latestPublishedVersion})`, 'yellow');
+    log(`   package.json will be updated by npm version`, 'dim');
+  }
+
+  // Calculate next versions based on latest published version
+  const currentVersion = latestPublishedVersion;
 
   // Show version options
   log('\nSelect version bump:', 'bright');
@@ -143,9 +184,20 @@ async function main() {
     process.exit(0);
   }
 
+  const releaseBranch = `release/v${newVersion}`;
+
+  log('\n⚙️  Creating release branch...', 'blue');
+  try {
+    exec(`git checkout -b ${releaseBranch}`);
+    log(`✓ Created branch ${releaseBranch}`, 'green');
+  } catch (error) {
+    log('\n❌ Failed to create release branch', 'red');
+    process.exit(1);
+  }
+
   log('\n⚙️  Running npm version...', 'blue');
   try {
-    exec(`npm version ${bumpType}`, { stdio: 'inherit' });
+    exec(`npm version ${newVersion}`, { stdio: 'inherit' });
     log(`✓ Version bumped to ${newVersion}`, 'green');
   } catch (error) {
     log('\n❌ Failed to bump version', 'red');
@@ -154,19 +206,40 @@ async function main() {
 
   log('\n⚙️  Pushing to remote...', 'blue');
   try {
-    exec('git push --follow-tags', { stdio: 'inherit' });
-    log('✓ Pushed commit and tags to remote', 'green');
+    exec(`git push -u origin ${releaseBranch} --follow-tags`, { stdio: 'inherit' });
+    log('✓ Pushed release branch and tags', 'green');
   } catch (error) {
     log('\n❌ Failed to push. You may need to push manually:', 'red');
-    log('  git push --follow-tags\n', 'dim');
+    log(`  git push -u origin ${releaseBranch} --follow-tags\n`, 'dim');
     process.exit(1);
   }
 
+  log('\n⚙️  Creating pull request...', 'blue');
+  try {
+    const prUrl = exec(
+      `gh pr create --base main --head ${releaseBranch} --title "Release v${newVersion}" --label "release" --body "Automated release PR for version ${newVersion}\n\n## Changes\n- Bump version from ${currentVersion} to ${newVersion}\n\n## Post-Merge: Fully Automated\n\nOnce this PR is merged, GitHub Actions will automatically:\n1. Create the GitHub release\n2. Publish to npm registry\n3. Publish to GitHub Packages\n\n**Monitor progress:** https://github.com/with-logic/fast-forward/actions\n\nNo manual steps required! 🎉"`
+    );
+    log(`✓ Pull request created`, 'green');
+    console.log(prUrl);
+  } catch (error) {
+    log('\n⚠️  Failed to create PR automatically', 'yellow');
+    log('\nYou can create it manually at:', 'dim');
+    log(`  https://github.com/with-logic/fast-forward/compare/main...${releaseBranch}`, 'cyan');
+    log(`  Don't forget to add the "release" label!\n`, 'dim');
+  }
+
   log('\n' + '═'.repeat(50), 'dim');
-  log('✅ Version published successfully!', 'green');
-  log('\n📋 Next step:', 'bright');
-  log(`  Run: npm run release`, 'cyan');
-  log('\n  This will create the GitHub release and trigger automated publishing.\n', 'dim');
+  log('✅ Release PR created successfully!', 'green');
+  log('\n📋 What happens next:', 'bright');
+  log('  1. Review and merge the PR', 'cyan');
+  log('  2. GitHub Actions will automatically:', 'dim');
+  log('     • Create the GitHub release', 'dim');
+  log('     • Publish to npm registry', 'dim');
+  log('     • Publish to GitHub Packages', 'dim');
+  log('\n📊 Monitor progress:', 'bright');
+  log('  https://github.com/with-logic/fast-forward/actions', 'cyan');
+  log('\n💡 Tip: You can switch back to main now:', 'dim');
+  log('  git checkout main\n', 'dim');
 }
 
 main().catch((error) => {

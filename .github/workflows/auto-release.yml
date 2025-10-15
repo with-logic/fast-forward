@@ -1,0 +1,102 @@
+name: Auto Release on PR Merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  create-release:
+    name: Create GitHub Release
+    # Only run if ALL conditions are met:
+    # 1. PR was actually merged (not just closed)
+    # 2. Source branch starts with "release/"
+    # 3. PR title starts with "Release v"
+    # 4. PR has the "release" label
+    if: |
+      github.event.pull_request.merged == true &&
+      startsWith(github.head_ref, 'release/') &&
+      startsWith(github.event.pull_request.title, 'Release v') &&
+      contains(github.event.pull_request.labels.*.name, 'release')
+
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to create releases
+      pull-requests: write  # Required to comment on PR
+
+    steps:
+      - name: Checkout main branch
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+
+      - name: Get version from package.json
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "Found version: $VERSION"
+
+      - name: Verify tag exists
+        run: |
+          git fetch --tags
+          if ! git tag -l "v${{ steps.version.outputs.version }}" | grep -q .; then
+            echo "Error: Tag v${{ steps.version.outputs.version }} does not exist"
+            echo "This should have been created by the prepare-release script."
+            exit 1
+          fi
+          echo "✓ Tag v${{ steps.version.outputs.version }} exists"
+
+      - name: Check if release already exists
+        id: check_release
+        run: |
+          if gh release view v${{ steps.version.outputs.version }} > /dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "Release already exists, skipping creation"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Release does not exist, will create"
+          fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create GitHub Release
+        if: steps.check_release.outputs.exists == 'false'
+        run: |
+          gh release create v${{ steps.version.outputs.version }} \
+            --title "Release v${{ steps.version.outputs.version }}" \
+            --generate-notes
+          echo "✅ Created release v${{ steps.version.outputs.version }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Add comment to PR
+        if: steps.check_release.outputs.exists == 'false'
+        run: |
+          gh pr comment ${{ github.event.pull_request.number }} --body \
+            "🚀 Release [v${{ steps.version.outputs.version }}](https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.version }}) has been created!
+
+            📦 Packages are being published automatically.
+
+            **Monitor progress:**
+            - [Publish workflow](https://github.com/${{ github.repository }}/actions/workflows/publish.yml)
+
+            **Installation:**
+            \`\`\`bash
+            npm install @with-logic/fast-forward@${{ steps.version.outputs.version }}
+            \`\`\`"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release already exists
+        if: steps.check_release.outputs.exists == 'true'
+        run: |
+          echo "ℹ️ Release v${{ steps.version.outputs.version }} already exists"
+          echo "View at: https://github.com/${{ github.repository }}/releases/tag/v${{ steps.version.outputs.version }}"
