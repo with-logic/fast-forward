@@ -23,8 +23,7 @@
     "prepare": "npm run build",
     "prepublishOnly": "npm test && npm run format && npm run lint",
     "coverage": "jest --coverage",
-    "prepare-release": "node scripts/publish.js",
-    "release": "node scripts/release.js"
+    "prepare-release": "node scripts/publish.js"
   },
   "keywords": [
     "cache",
