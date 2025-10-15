@@ -79,20 +79,19 @@ Enter your choice (1-3): 1
 
 Once the PR is merged, GitHub Actions automatically:
 
-1. **Creates the GitHub release** ([auto-release.yml](.github/workflows/auto-release.yml))
+1. **Creates the GitHub release** ([release-and-publish.yml](.github/workflows/release-and-publish.yml))
    - Triggered by PR merge
    - Generates release notes from commits
    - Tags the release
 
-2. **Publishes packages** ([publish.yml](.github/workflows/publish.yml))
-   - Triggered by release creation
+2. **Publishes packages** (same workflow)
    - Runs tests and builds
    - Publishes to public npm registry
    - Publishes to GitHub Packages
 
 **Monitor progress:**
 - [GitHub Actions](https://github.com/with-logic/fast-forward/actions)
-- Look for "Auto Release on PR Merge" and "Publish Package" workflows
+- Look for "Release and Publish" workflow
 
 **No manual steps required!** ✨
 
@@ -141,7 +140,7 @@ npm install @with-logic/fast-forward
 
 **How to check:**
 1. Go to [GitHub Actions](https://github.com/with-logic/fast-forward/actions)
-2. Look for "Auto Release on PR Merge" workflow
+2. Look for "Release and Publish" workflow
 3. Check if it ran and what the logs say
 
 **Fix:**
@@ -211,9 +210,9 @@ git tag -l | sort -V | tail -1
 # 3. Manually create the release
 ```
 
-### Publish Workflow Failed
+### Release and Publish Workflow Failed
 
-**Symptoms:** Release was created but packages weren't published.
+**Symptoms:** Workflow failed during release creation or package publishing.
 
 **Possible causes:**
 - npm authentication issues
@@ -223,10 +222,10 @@ git tag -l | sort -V | tail -1
 
 **Fix:**
 1. Go to [GitHub Actions](https://github.com/with-logic/fast-forward/actions)
-2. Find the failed "Publish Package" workflow
+2. Find the failed "Release and Publish" workflow
 3. Check the logs to identify the issue
-4. Fix the underlying problem (may require a new commit)
-5. Re-run the workflow from the GitHub Actions UI
+4. Fix the underlying problem (may require a new commit and PR)
+5. Re-run the workflow from the GitHub Actions UI if the issue was transient
 
 ### Emergency: Manual Package Publishing
 
@@ -266,10 +265,10 @@ npm config set registry https://registry.npmjs.org
 - [ ] You've pulled latest changes: `git pull`
 
 ### After Merging Release PR
-- [ ] Auto-release workflow completed successfully
-- [ ] Publish workflow completed successfully
+- [ ] Release and Publish workflow completed successfully
 - [ ] Package is available on npm: `npm view @with-logic/fast-forward`
 - [ ] GitHub release is published: [Releases](https://github.com/with-logic/fast-forward/releases)
+- [ ] GitHub Packages published: [Packages](https://github.com/with-logic/fast-forward/pkgs/npm/fast-forward)
 
 ## Important Notes
 
@@ -337,21 +336,16 @@ If you need to rollback a release:
                   │
                   ▼
 ┌─────────────────────────────────────────────────────────┐
-│  auto-release.yml workflow triggers (PR merge)          │
+│  release-and-publish.yml workflow triggers (PR merge)   │
 │  - Checks: merged + branch + title + label             │
 │  - Reads version from package.json                      │
 │  - Verifies git tag exists                              │
 │  - Creates GitHub release                               │
-└─────────────────┬───────────────────────────────────────┘
-                  │
-                  ▼
-┌─────────────────────────────────────────────────────────┐
-│  publish.yml workflow triggers (release created)        │
-│  - Validates version matches tag                        │
 │  - Runs tests                                           │
 │  - Builds package                                       │
 │  - Publishes to npm registry                            │
 │  - Publishes to GitHub Packages                         │
+│  - Comments on PR with links                            │
 └─────────────────────────────────────────────────────────┘
 ```
 
