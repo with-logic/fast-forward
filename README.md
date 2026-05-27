@@ -407,6 +407,16 @@ const cachedObj = ff(obj, { cache: customCache });
 - `FASTFORWARD_MODE`: Set the cache mode globally. Valid values: `ON`, `OFF`, `UPDATE_ONLY`, `READ_ONLY`. 
   This provides a default mode when no explicit mode is specified in code. If a mode is explicitly passed to the `fastForward` function, it will override this environment variable.
 
+## Development
+
+This repo pins **npm 11.6.2** via Corepack (specified in the `packageManager` field of `package.json`). When working on this repo, enable Corepack so npm matches the pinned version — this prevents `package-lock.json` churn across the team:
+
+```sh
+corepack enable npm
+npm --version  # Should show 11.6.2
+npm install
+```
+
 ## License
 
 MIT
