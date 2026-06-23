@@ -38,7 +38,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 24.x
 
       - name: Get version from package.json
         id: version
@@ -114,7 +114,7 @@ jobs:
       - name: Setup Node.js for public npm
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 24.x
           registry-url: https://registry.npmjs.org
 
       - name: Publish to public npm registry
@@ -125,7 +125,7 @@ jobs:
       - name: Setup Node.js for GitHub Packages
         uses: actions/setup-node@v4
         with:
-          node-version: 20.x
+          node-version: 24.x
           registry-url: https://npm.pkg.github.com
 
       - name: Publish to GitHub Packages
