@@ -30,13 +30,13 @@ jobs:
       # Phase 1: Prepare and Validate
       # ============================================
       - name: Checkout main branch
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           ref: main
           fetch-depth: 0
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24.x
 
@@ -112,7 +112,7 @@ jobs:
       # Phase 4: Publish to npm Registries
       # ============================================
       - name: Setup Node.js for public npm
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24.x
           registry-url: https://registry.npmjs.org
@@ -123,7 +123,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Setup Node.js for GitHub Packages
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24.x
           registry-url: https://npm.pkg.github.com
