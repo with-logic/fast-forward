@@ -210,6 +210,33 @@ Key transformers enable powerful caching patterns:
 3. **Cross-method caching** - Share cache entries between different methods when they produce the same results
 4. **Semantic caching** - Group cache entries based on the purpose rather than exact method names
 5. **Handle non-serializable arguments** - Provide stable representations for circular references or other complex objects
+6. **Skip caching per call** - Return `null` to bypass the cache entirely for a call
+
+### Skipping the Cache for Specific Calls
+
+A key transformer can return `null` to opt a call out of caching entirely. The
+underlying method is invoked directly and nothing is read from or written to
+the cache, regardless of the active cache mode. This is useful for calls whose
+results must always be live, such as status polling or resource lifecycle
+operations (create/delete), while other methods on the same client stay cached:
+
+```typescript
+import { fastForward as ff, type KeyComponents } from '@with-logic/fast-forward';
+
+const pollAwareTransformer = (method: string, args: any[]): KeyComponents | null => {
+  // Polling calls must observe live state; never cache them
+  if (method === 'retrieve' || method === 'delete') {
+    return null;
+  }
+  return { method, args };
+};
+
+const cachedClient = ff(client, { key: pollAwareTransformer });
+```
+
+Calls with arguments that cannot be serialized (e.g., circular references) are
+treated the same way: they pass through uncached instead of producing a cache
+entry.
 
 ### Cache Modes
 
