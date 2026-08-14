@@ -952,7 +952,6 @@ describe('fastForward', () => {
   });
 
   describe('skip caching via key transformer', () => {
-    // A transformer that skips caching for methods whose name starts with "live"
     const skipLiveMethods = (method: string, args: any[]): KeyComponents | null => {
       if (method.startsWith('live')) {
         return null;
@@ -1054,8 +1053,6 @@ describe('fastForward', () => {
       const cachedObj = ff({ method }, { cache: new FileSystemCache({ cacheDir: testCacheDir }) });
 
       try {
-        // Unserializable args produce no cache key, so the call must pass
-        // through without the cache ever hashing an undefined key
         expect(cachedObj.method(circular)).toBe(7);
         expect(cachedObj.method(circular)).toBe(7);
         expect(method).toHaveBeenCalledTimes(2);

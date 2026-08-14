@@ -88,10 +88,7 @@ export function fastForward<T extends object>(
         // This ensures proper handling of methods that depend on 'this'
         const cacheKey = generateCacheKey(`${String(prop)}`, args, keyFn);
 
-        // No cache key means this call is uncacheable: either the key
-        // transformer opted out by returning null, or the arguments could not
-        // be serialized. Invoke the method directly without touching the
-        // cache, regardless of mode.
+        // An undefined key opts this call out of all cache operations.
         if (cacheKey === undefined) {
           return method.apply(obj, args);
         }

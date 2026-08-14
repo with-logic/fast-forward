@@ -34,10 +34,7 @@ export interface KeyComponents {
 /**
  * Function type for transforming cache keys.
  *
- * Return the (potentially modified) method and arguments to control how the
- * cache key is generated, or return `null` to skip caching for this call:
- * the underlying method is invoked directly and nothing is read from or
- * written to the cache, regardless of the active CacheMode.
+ * Return `null` to skip all cache operations for a call.
  */
 export type KeyTransformer = (method: string, args: any[]) => KeyComponents | null;
 

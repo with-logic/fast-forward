@@ -224,7 +224,6 @@ operations (create/delete), while other methods on the same client stay cached:
 import { fastForward as ff, type KeyComponents } from '@with-logic/fast-forward';
 
 const pollAwareTransformer = (method: string, args: any[]): KeyComponents | null => {
-  // Polling calls must observe live state; never cache them
   if (method === 'retrieve' || method === 'delete') {
     return null;
   }
