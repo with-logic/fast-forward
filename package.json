@@ -58,13 +58,13 @@
     "picomatch": "2.3.2",
     "uuid": "11.1.1",
     "minimatch@^3.0.4": {
-      "brace-expansion": "1.1.13"
+      "brace-expansion": "1.1.18"
     },
     "minimatch@^5.0.0": {
-      "brace-expansion": "2.0.3"
+      "brace-expansion": "2.1.4"
     },
     "minimatch@^9.0.0": {
-      "brace-expansion": "2.0.3"
+      "brace-expansion": "2.1.4"
     }
   },
   "repository": {
