@@ -1,6 +1,6 @@
 {
   "name": "@with-logic/fast-forward",
-  "version": "0.1.13",
+  "version": "0.1.14",
   "packageManager": "npm@11.6.2",
   "description": "A TypeScript library that wraps objects in a cache-aware Proxy for faster method calls",
   "main": "dist/src/index.js",
@@ -58,13 +58,13 @@
     "picomatch": "2.3.2",
     "uuid": "11.1.1",
     "minimatch@^3.0.4": {
-      "brace-expansion": "1.1.13"
+      "brace-expansion": "1.1.18"
     },
     "minimatch@^5.0.0": {
-      "brace-expansion": "2.0.3"
+      "brace-expansion": "2.1.4"
     },
     "minimatch@^9.0.0": {
-      "brace-expansion": "2.0.3"
+      "brace-expansion": "2.1.4"
     }
   },
   "repository": {
