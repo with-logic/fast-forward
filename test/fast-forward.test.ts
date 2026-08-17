@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import { rmSync } from 'fs';
+import { join } from 'path';
 import { fastForward as ff, InMemoryCache, FileSystemCache, CacheMode } from '../src';
 import type { Cache, FastForwardOptions, KeyComponents } from '../src';
 
@@ -1044,7 +1044,7 @@ describe('fastForward', () => {
     });
 
     it('should not crash a FileSystemCache when arguments are not serializable', () => {
-      const testCacheDir = path.join(process.cwd(), '.test-cache-skip');
+      const testCacheDir = join(process.cwd(), '.test-cache-skip');
 
       const circular: any = { ref: null };
       circular.ref = circular;
@@ -1057,7 +1057,7 @@ describe('fastForward', () => {
         expect(cachedObj.method(circular)).toBe(7);
         expect(method).toHaveBeenCalledTimes(2);
       } finally {
-        fs.rmSync(testCacheDir, { recursive: true, force: true });
+        rmSync(testCacheDir, { recursive: true, force: true });
       }
     });
   });

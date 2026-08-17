@@ -1,6 +1,15 @@
-import * as crypto from 'crypto';
-import * as fs from 'fs';
-import * as path from 'path';
+import { createHash } from 'crypto';
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmdirSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from 'fs';
+import { join } from 'path';
 import { Cache } from './types';
 
 /**
@@ -29,12 +38,12 @@ export class FileSystemCache implements Cache {
    * @param options.namespace - Subdirectory within cacheDir to use for this cache instance (defaults to 'default')
    */
   constructor(options?: { cacheDir?: string; namespace?: string }) {
-    this.cacheDir = options?.cacheDir || path.join(process.cwd(), '.fastforward-cache');
+    this.cacheDir = options?.cacheDir || join(process.cwd(), '.fastforward-cache');
     this.namespace = options?.namespace || 'default';
 
     // Create cache directory including namespace subdirectory if they don't exist
-    const namespacedDir = path.join(this.cacheDir, this.namespace);
-    fs.mkdirSync(namespacedDir, { recursive: true });
+    const namespacedDir = join(this.cacheDir, this.namespace);
+    mkdirSync(namespacedDir, { recursive: true });
   }
 
   /**
@@ -45,8 +54,8 @@ export class FileSystemCache implements Cache {
    */
   private getFilePath(key: string): string {
     // Create a hash of the key to use as the filename
-    const hash = crypto.createHash('sha256').update(key).digest('hex');
-    return path.join(this.cacheDir, this.namespace, `${hash}.json`);
+    const hash = createHash('sha256').update(key).digest('hex');
+    return join(this.cacheDir, this.namespace, `${hash}.json`);
   }
 
   /**
@@ -58,12 +67,12 @@ export class FileSystemCache implements Cache {
   get(key: string): any | undefined {
     const filePath = this.getFilePath(key);
 
-    if (!fs.existsSync(filePath)) {
+    if (!existsSync(filePath)) {
       return undefined;
     }
 
     try {
-      const data = fs.readFileSync(filePath, 'utf8');
+      const data = readFileSync(filePath, 'utf8');
       const entry: CacheEntry = JSON.parse(data);
       return entry.value;
     } catch (error) {
@@ -90,7 +99,7 @@ export class FileSystemCache implements Cache {
     };
 
     const data = JSON.stringify(entry, null, 2);
-    fs.writeFileSync(filePath, data, 'utf8');
+    writeFileSync(filePath, data, 'utf8');
   }
 
   /**
@@ -101,7 +110,7 @@ export class FileSystemCache implements Cache {
    */
   has(key: string): boolean {
     const filePath = this.getFilePath(key);
-    return fs.existsSync(filePath);
+    return existsSync(filePath);
   }
 
   /**
@@ -113,8 +122,8 @@ export class FileSystemCache implements Cache {
   delete(key: string): boolean {
     const filePath = this.getFilePath(key);
 
-    if (fs.existsSync(filePath)) {
-      fs.unlinkSync(filePath);
+    if (existsSync(filePath)) {
+      unlinkSync(filePath);
       return true;
     }
 
@@ -127,24 +136,24 @@ export class FileSystemCache implements Cache {
    */
   clear(): void {
     try {
-      const namespacedDir = path.join(this.cacheDir, this.namespace);
+      const namespacedDir = join(this.cacheDir, this.namespace);
 
       // If the directory exists, remove it recursively
-      if (fs.existsSync(namespacedDir)) {
+      if (existsSync(namespacedDir)) {
         // First, remove all regular files in the directory
         // This is a backup approach for platforms with issues deleting non-empty dirs
-        const files = fs.readdirSync(namespacedDir);
+        const files = readdirSync(namespacedDir);
         for (const file of files) {
-          const filePath = path.join(namespacedDir, file);
-          const stats = fs.statSync(filePath);
+          const filePath = join(namespacedDir, file);
+          const stats = statSync(filePath);
           if (stats.isFile()) {
-            fs.unlinkSync(filePath);
+            unlinkSync(filePath);
           }
         }
 
         // Now try to remove the directory
         try {
-          fs.rmdirSync(namespacedDir);
+          rmdirSync(namespacedDir);
         } catch (error) {
           // If directory is not empty or we don't have permission,
           // the code above should have at least removed all cache files
@@ -152,13 +161,13 @@ export class FileSystemCache implements Cache {
       }
 
       // Recreate the empty directory
-      fs.mkdirSync(namespacedDir, { recursive: true });
+      mkdirSync(namespacedDir, { recursive: true });
     } catch (error) {
       // Silently fail since the end result should be the same - an empty cache
       // Ensure the directory exists for future operations
       try {
-        const namespacedDir = path.join(this.cacheDir, this.namespace);
-        fs.mkdirSync(namespacedDir, { recursive: true });
+        const namespacedDir = join(this.cacheDir, this.namespace);
+        mkdirSync(namespacedDir, { recursive: true });
       } catch (_) {
         // If we can't create the directory, future operations will fail naturally
       }
