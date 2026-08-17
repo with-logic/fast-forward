@@ -210,6 +210,32 @@ git tag -l | sort -V | tail -1
 # 3. Manually create the release
 ```
 
+### Version Already Bumped by a Feature PR
+
+**Symptoms:** `npm run prepare-release` fails with `Version not changed` (or silently offers the wrong bump), because a feature PR already raised `package.json` to the version you want to release.
+
+**Cause:** Version bumps belong in release PRs only. When a feature PR bumps `package.json`, main sits at the target version with no matching git tag, so `npm version <target>` is a no-op and the script cannot create the version commit or tag.
+
+**Fix:** Create the tag by hand and open a release PR that carries some other change (docs, changelog, tooling). The publish workflow only requires that the merged PR came from a `release/` branch with the `release` label and a `Release v` title, and that the tag matches `package.json` on main.
+
+```bash
+# 1. Tag main at the version already in package.json
+git checkout main && git pull
+VERSION=$(node -p "require('./package.json').version")
+git tag -a "v$VERSION" -m "v$VERSION"
+git push origin "v$VERSION"
+
+# 2. Open a release PR from a release/ branch with a real (non-empty) change
+git checkout -b "release/v$VERSION"
+# ...commit the change...
+git push -u origin "release/v$VERSION"
+gh pr create --base main --title "Release v$VERSION" --label release --body "Release v$VERSION"
+```
+
+Merging that PR triggers the usual release-and-publish automation.
+
+**Prevention:** Never edit the `version` field in a feature PR — let `prepare-release` own it.
+
 ### Release and Publish Workflow Failed
 
 **Symptoms:** Workflow failed during release creation or package publishing.
