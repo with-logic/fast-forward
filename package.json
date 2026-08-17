@@ -69,10 +69,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/with-logic/fast-foward.git"
+    "url": "git+https://github.com/with-logic/fast-forward.git"
   },
   "bugs": {
-    "url": "https://github.com/with-logic/fast-foward/issues"
+    "url": "https://github.com/with-logic/fast-forward/issues"
   },
-  "homepage": "https://github.com/with-logic/fast-foward#readme"
+  "homepage": "https://github.com/with-logic/fast-forward#readme"
 }

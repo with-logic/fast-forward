@@ -24,6 +24,7 @@ jobs:
       contents: write        # Required to create releases
       packages: write        # Required to publish to GitHub Packages
       pull-requests: write   # Required to comment on PR
+      id-token: write        # Required for npm trusted publishing (OIDC)
 
     steps:
       # ============================================
@@ -111,6 +112,12 @@ jobs:
       # ============================================
       # Phase 4: Publish to npm Registries
       # ============================================
+      # Publishes via npm trusted publishing (OIDC) — no NPM_TOKEN required.
+      # This relies on a trusted publisher configured at npmjs.com for
+      # @with-logic/fast-forward pointing at this repo AND this workflow
+      # filename (release-and-publish.yml). Renaming this file will break
+      # publishing until the npmjs.com config is updated to match.
+      # Requires npm >= 11.5.1 and Node >= 22.14.0 (Node 24.x ships npm 11.6.x).
       - name: Setup Node.js for public npm
         uses: actions/setup-node@v5
         with:
@@ -119,9 +126,11 @@ jobs:
 
       - name: Publish to public npm registry
         run: npm publish --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      # GitHub Packages is a separate registry and does NOT participate in npm's
+      # trusted publishing (OIDC). It authenticates with the per-run GITHUB_TOKEN,
+      # which is auto-minted by Actions and needs no manual rotation — so this
+      # step is unaffected by npm's deprecation of long-lived tokens.
       - name: Setup Node.js for GitHub Packages
         uses: actions/setup-node@v5
         with:
