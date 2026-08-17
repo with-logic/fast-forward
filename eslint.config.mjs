@@ -58,6 +58,13 @@ export default [
     },
     rules: {
       'prettier/prettier': 'error',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ImportNamespaceSpecifier',
+          message: "Import specific names instead of a namespace: use `import { x } from 'y'`."
+        }
+      ],
       '@typescript-eslint/no-explicit-any': 'off',
       '@typescript-eslint/no-unused-vars': 'off',
       "@typescript-eslint/no-unsafe-function-type": "off",

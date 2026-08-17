@@ -65,6 +65,12 @@ describe('Utils', () => {
       // The key should be a string and contain the method name
       expect(key).toBeUndefined();
     });
+
+    it('should return undefined when the key transformer returns null', () => {
+      const key = generateCacheKey('testMethod', [1, 2], () => null);
+
+      expect(key).toBeUndefined();
+    });
   });
 
   describe('isMethod', () => {

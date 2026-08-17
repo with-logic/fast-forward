@@ -32,9 +32,11 @@ export interface KeyComponents {
 }
 
 /**
- * Function type for transforming cache keys
+ * Function type for transforming cache keys.
+ *
+ * Return `null` to skip all cache operations for a call.
  */
-export type KeyTransformer = (method: string, args: any[]) => KeyComponents;
+export type KeyTransformer = (method: string, args: any[]) => KeyComponents | null;
 
 /**
  * Options for fastForward function.
@@ -68,7 +70,7 @@ export interface Cache {
    * @param key - The cache key
    * @returns The cached value or undefined if not found
    */
-  get(key: string | undefined): any | undefined;
+  get(key: string): any | undefined;
 
   /**
    * Sets a value in the cache.
@@ -76,7 +78,7 @@ export interface Cache {
    * @param key - The cache key
    * @param value - The value to cache
    */
-  set(key: string | undefined, value: any): void;
+  set(key: string, value: any): void;
 
   /**
    * Checks if a key exists in the cache.
@@ -84,7 +86,7 @@ export interface Cache {
    * @param key - The cache key
    * @returns True if the key exists, false otherwise
    */
-  has(key: string | undefined): boolean;
+  has(key: string): boolean;
 
   /**
    * Deletes a key from the cache.
@@ -93,7 +95,7 @@ export interface Cache {
    * @param key - The cache key to delete
    * @returns True if the entry was deleted, false if it didn't exist
    */
-  delete(key: string | undefined): boolean;
+  delete(key: string): boolean;
 
   /**
    * Clears all entries from the cache.

@@ -8,7 +8,7 @@ import { Cache, CacheMode, FastForwardOptions, KeyTransformer } from './types';
  * @param methodName - Name of the method being called
  * @param args - Arguments passed to the method
  * @param keyTransformer - Optional function to transform the method and arguments
- * @returns A string key for cache lookup
+ * @returns A cache key, or undefined when the call cannot be cached
  */
 export function generateCacheKey(
   methodName: string,
@@ -22,6 +22,9 @@ export function generateCacheKey(
 
     if (keyTransformer) {
       const transformed = keyTransformer(methodName, args);
+      if (transformed === null) {
+        return undefined;
+      }
       method = transformed.method;
       transformedArgs = transformed.args;
     }

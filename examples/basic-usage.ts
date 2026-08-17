@@ -1,5 +1,5 @@
 import { fastForward as ff, FileSystemCache, InMemoryCache } from '../src';
-import * as path from 'path';
+import { join } from 'path';
 
 // Create an object with expensive methods
 const calculator = {
@@ -31,7 +31,7 @@ const memoryCalculator = ff(calculator, memoryCache);
 
 // Option 3: Persistent file system cache with custom directory
 const fileSystemCache = new FileSystemCache({
-  cacheDir: path.join(process.cwd(), '.my-custom-cache'),
+  cacheDir: join(process.cwd(), '.my-custom-cache'),
 });
 const diskCalculator = ff(calculator, fileSystemCache);
 

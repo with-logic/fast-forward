@@ -88,6 +88,11 @@ export function fastForward<T extends object>(
         // This ensures proper handling of methods that depend on 'this'
         const cacheKey = generateCacheKey(`${String(prop)}`, args, keyFn);
 
+        // An undefined key opts this call out of all cache operations.
+        if (cacheKey === undefined) {
+          return method.apply(obj, args);
+        }
+
         // If caching is completely disabled
         if (mode === CacheMode.OFF) {
           return method.apply(obj, args);

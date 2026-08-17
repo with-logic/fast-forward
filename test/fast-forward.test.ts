@@ -1,4 +1,6 @@
-import { fastForward as ff, InMemoryCache, CacheMode } from '../src';
+import { rmSync } from 'fs';
+import { join } from 'path';
+import { fastForward as ff, InMemoryCache, FileSystemCache, CacheMode } from '../src';
 import type { Cache, FastForwardOptions, KeyComponents } from '../src';
 
 describe('fastForward', () => {
@@ -946,6 +948,117 @@ describe('fastForward', () => {
       expect(deepMethodSpy).not.toHaveBeenCalled(); // Should not be called
 
       // This test verifies that the key transformer is correctly passed to nested proxies
+    });
+  });
+
+  describe('skip caching via key transformer', () => {
+    const skipLiveMethods = (method: string, args: any[]): KeyComponents | null => {
+      if (method.startsWith('live')) {
+        return null;
+      }
+      return { method, args };
+    };
+
+    const createSpyCache = (): Cache & { setCalls: number; hasCalls: number } => {
+      const inner = new InMemoryCache();
+      const spy = {
+        setCalls: 0,
+        hasCalls: 0,
+        get: (key: string) => inner.get(key),
+        set: (key: string, value: any) => {
+          spy.setCalls++;
+          inner.set(key, value);
+        },
+        has: (key: string) => {
+          spy.hasCalls++;
+          return inner.has(key);
+        },
+        delete: (key: string) => inner.delete(key),
+        clear: () => inner.clear(),
+      };
+      return spy;
+    };
+
+    it('should invoke the method on every call and never touch the cache when the transformer returns null', () => {
+      const liveMethod = jest.fn().mockReturnValue('fresh');
+      const cache = createSpyCache();
+      const cachedObj = ff({ liveMethod }, { cache, key: skipLiveMethods });
+
+      expect(cachedObj.liveMethod('a')).toBe('fresh');
+      expect(cachedObj.liveMethod('a')).toBe('fresh');
+
+      expect(liveMethod).toHaveBeenCalledTimes(2);
+      expect(cache.setCalls).toBe(0);
+      expect(cache.hasCalls).toBe(0);
+    });
+
+    it('should still cache methods the transformer does not skip', () => {
+      const liveMethod = jest.fn().mockReturnValue('fresh');
+      const cachedMethod = jest.fn().mockReturnValue('stable');
+      const cache = createSpyCache();
+      const cachedObj = ff({ liveMethod, cachedMethod }, { cache, key: skipLiveMethods });
+
+      expect(cachedObj.cachedMethod('a')).toBe('stable');
+      expect(cachedObj.cachedMethod('a')).toBe('stable');
+      expect(cachedObj.liveMethod('a')).toBe('fresh');
+      expect(cachedObj.liveMethod('a')).toBe('fresh');
+
+      expect(cachedMethod).toHaveBeenCalledTimes(1);
+      expect(liveMethod).toHaveBeenCalledTimes(2);
+      expect(cache.setCalls).toBe(1);
+    });
+
+    it('should invoke skipped methods in READ_ONLY mode instead of returning undefined', () => {
+      const liveMethod = jest.fn().mockReturnValue('fresh');
+      const cachedObj = ff(
+        { liveMethod },
+        { cache: new InMemoryCache(), mode: CacheMode.READ_ONLY, key: skipLiveMethods }
+      );
+
+      expect(cachedObj.liveMethod()).toBe('fresh');
+      expect(liveMethod).toHaveBeenCalledTimes(1);
+    });
+
+    it('should not store results for skipped methods in UPDATE_ONLY mode', () => {
+      const liveMethod = jest.fn().mockReturnValue('fresh');
+      const cache = createSpyCache();
+      const cachedObj = ff(
+        { liveMethod },
+        { cache, mode: CacheMode.UPDATE_ONLY, key: skipLiveMethods }
+      );
+
+      expect(cachedObj.liveMethod()).toBe('fresh');
+      expect(cache.setCalls).toBe(0);
+    });
+
+    it('should skip promise-returning methods without caching their resolved values', async () => {
+      const liveMethod = jest.fn().mockResolvedValue('fresh');
+      const cache = createSpyCache();
+      const cachedObj = ff({ liveMethod }, { cache, key: skipLiveMethods });
+
+      await expect(cachedObj.liveMethod()).resolves.toBe('fresh');
+      await expect(cachedObj.liveMethod()).resolves.toBe('fresh');
+
+      expect(liveMethod).toHaveBeenCalledTimes(2);
+      expect(cache.setCalls).toBe(0);
+    });
+
+    it('should not crash a FileSystemCache when arguments are not serializable', () => {
+      const testCacheDir = join(process.cwd(), '.test-cache-skip');
+
+      const circular: any = { ref: null };
+      circular.ref = circular;
+
+      const method = jest.fn().mockReturnValue(7);
+      const cachedObj = ff({ method }, { cache: new FileSystemCache({ cacheDir: testCacheDir }) });
+
+      try {
+        expect(cachedObj.method(circular)).toBe(7);
+        expect(cachedObj.method(circular)).toBe(7);
+        expect(method).toHaveBeenCalledTimes(2);
+      } finally {
+        rmSync(testCacheDir, { recursive: true, force: true });
+      }
     });
   });
 });

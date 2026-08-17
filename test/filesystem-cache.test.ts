@@ -1,10 +1,20 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import {
+  chmodSync,
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  rmdirSync,
+  statSync,
+  unlinkSync,
+  writeFileSync,
+} from 'fs';
+import { join } from 'path';
 import { FileSystemCache } from '../src';
 
 describe('FileSystemCache', () => {
   let cache: FileSystemCache;
-  const testCacheDir = path.join(process.cwd(), '.test-cache');
+  const testCacheDir = join(process.cwd(), '.test-cache');
 
   beforeEach(() => {
     // Create a fresh cache for each test with a test-specific directory
@@ -13,25 +23,25 @@ describe('FileSystemCache', () => {
 
   afterEach(() => {
     // Clean up the test cache directory after each test
-    if (fs.existsSync(testCacheDir)) {
+    if (existsSync(testCacheDir)) {
       const cleanDir = (dir: string) => {
-        if (fs.existsSync(dir)) {
-          const files = fs.readdirSync(dir);
+        if (existsSync(dir)) {
+          const files = readdirSync(dir);
           for (const file of files) {
-            const filePath = path.join(dir, file);
-            const stats = fs.statSync(filePath);
+            const filePath = join(dir, file);
+            const stats = statSync(filePath);
             if (stats.isDirectory()) {
               cleanDir(filePath);
-              fs.rmdirSync(filePath);
+              rmdirSync(filePath);
             } else {
-              fs.unlinkSync(filePath);
+              unlinkSync(filePath);
             }
           }
         }
       };
 
       cleanDir(testCacheDir);
-      fs.rmdirSync(testCacheDir);
+      rmdirSync(testCacheDir);
     }
   });
 
@@ -77,12 +87,12 @@ describe('FileSystemCache', () => {
     // Create a cache entry
     cache.set(key, 'value');
     // Get the file path
-    const namespacedDir = path.join(testCacheDir, 'default');
-    const files = fs.readdirSync(namespacedDir);
+    const namespacedDir = join(testCacheDir, 'default');
+    const files = readdirSync(namespacedDir);
     const keyFile = files.find((f) => f.endsWith('.json'));
-    const filePath = path.join(namespacedDir, keyFile!);
+    const filePath = join(namespacedDir, keyFile!);
     // Delete the file directly to simulate it being gone
-    fs.unlinkSync(filePath);
+    unlinkSync(filePath);
     // Now try to delete the key - should return false since file is gone
     const result2 = cache.delete(key);
     expect(result2).toBe(false);
@@ -141,9 +151,9 @@ describe('FileSystemCache', () => {
     expect(cache.get(key)).toBe(value);
 
     // Check the file was created with the correct structure
-    const defaultNamespaceDir = path.join(testCacheDir, 'default');
-    const filePath = path.join(defaultNamespaceDir, fs.readdirSync(defaultNamespaceDir)[0]);
-    const fileContent = fs.readFileSync(filePath, 'utf8');
+    const defaultNamespaceDir = join(testCacheDir, 'default');
+    const filePath = join(defaultNamespaceDir, readdirSync(defaultNamespaceDir)[0]);
+    const fileContent = readFileSync(filePath, 'utf8');
     const parsed = JSON.parse(fileContent);
 
     expect(parsed.key).toBe(key);
@@ -154,30 +164,30 @@ describe('FileSystemCache', () => {
 
   it('should use the default cache directory when not specified', () => {
     const defaultCache = new FileSystemCache();
-    const defaultDir = path.join(process.cwd(), '.fastforward-cache');
-    const defaultNamespaceDir = path.join(defaultDir, 'default');
+    const defaultDir = join(process.cwd(), '.fastforward-cache');
+    const defaultNamespaceDir = join(defaultDir, 'default');
 
     // Set a value to ensure the directory is created
     defaultCache.set('default-test', 'value');
 
     // Verify the directory exists
-    expect(fs.existsSync(defaultDir)).toBe(true);
-    expect(fs.existsSync(defaultNamespaceDir)).toBe(true);
+    expect(existsSync(defaultDir)).toBe(true);
+    expect(existsSync(defaultNamespaceDir)).toBe(true);
 
     // Clean up
-    if (fs.existsSync(defaultDir)) {
+    if (existsSync(defaultDir)) {
       try {
         const cleanDir = (dir: string) => {
-          if (fs.existsSync(dir)) {
-            const files = fs.readdirSync(dir);
+          if (existsSync(dir)) {
+            const files = readdirSync(dir);
             for (const file of files) {
-              const filePath = path.join(dir, file);
-              const stats = fs.statSync(filePath);
+              const filePath = join(dir, file);
+              const stats = statSync(filePath);
               if (stats.isDirectory()) {
                 cleanDir(filePath);
-                fs.rmdirSync(filePath);
+                rmdirSync(filePath);
               } else if (file.endsWith('.json')) {
-                fs.unlinkSync(filePath);
+                unlinkSync(filePath);
               }
             }
           }
@@ -196,12 +206,12 @@ describe('FileSystemCache', () => {
     cache.set(key, 'good-value');
 
     // Find the file path for this key
-    const namespacedDir = path.join(testCacheDir, 'default');
-    const cacheFiles = fs.readdirSync(namespacedDir);
-    const filePath = path.join(namespacedDir, cacheFiles[0]);
+    const namespacedDir = join(testCacheDir, 'default');
+    const cacheFiles = readdirSync(namespacedDir);
+    const filePath = join(namespacedDir, cacheFiles[0]);
 
     // Corrupt the file with invalid JSON
-    fs.writeFileSync(filePath, 'not valid json', 'utf8');
+    writeFileSync(filePath, 'not valid json', 'utf8');
 
     // Should return undefined for corrupted entry
     expect(cache.get(key)).toBeUndefined();
@@ -232,13 +242,13 @@ describe('FileSystemCache', () => {
     expect(cache.has(key)).toBe(true);
 
     // Get the namespaced directory
-    const namespacedDir = path.join(testCacheDir, 'default');
+    const namespacedDir = join(testCacheDir, 'default');
 
     // Make the file read-only so we can't delete it
-    const dirMode = fs.statSync(namespacedDir).mode;
+    const dirMode = statSync(namespacedDir).mode;
 
     // Make parent directory read-only which should prevent deletion
-    fs.chmodSync(namespacedDir, 0o444); // Read-only
+    chmodSync(namespacedDir, 0o444); // Read-only
 
     try {
       // This should trigger the catch block in delete method
@@ -247,7 +257,7 @@ describe('FileSystemCache', () => {
       expect(result).toBe(false);
     } finally {
       // Restore permissions so cleanup works
-      fs.chmodSync(namespacedDir, dirMode);
+      chmodSync(namespacedDir, dirMode);
     }
   });
 
@@ -257,18 +267,18 @@ describe('FileSystemCache', () => {
     cache.set('key2', 'value2');
 
     // Get the namespaced directory
-    const namespacedDir = path.join(testCacheDir, 'default');
+    const namespacedDir = join(testCacheDir, 'default');
 
     // Create a subdirectory that will cause rmdir to fail (since dir is not empty)
-    const subDir = path.join(namespacedDir, 'subdir');
-    fs.mkdirSync(subDir, { recursive: true });
+    const subDir = join(namespacedDir, 'subdir');
+    mkdirSync(subDir, { recursive: true });
 
     // Create a file in the subdirectory to make it non-empty
-    const subDirFile = path.join(subDir, 'test.txt');
-    fs.writeFileSync(subDirFile, 'test content', 'utf8');
+    const subDirFile = join(subDir, 'test.txt');
+    writeFileSync(subDirFile, 'test content', 'utf8');
 
     // Make the subdirectory read-only
-    fs.chmodSync(subDir, 0o555); // Read and execute only
+    chmodSync(subDir, 0o555); // Read and execute only
 
     try {
       // This should not throw despite rmdir failing on non-empty directory
@@ -278,23 +288,23 @@ describe('FileSystemCache', () => {
       expect(cache.has('key1')).toBe(false);
 
       // Subdirectory should still exist because we couldn't fully delete it
-      expect(fs.existsSync(subDir)).toBe(true);
+      expect(existsSync(subDir)).toBe(true);
 
       // Parent namespace directory should also still exist
-      expect(fs.existsSync(namespacedDir)).toBe(true);
+      expect(existsSync(namespacedDir)).toBe(true);
     } finally {
       // Restore permissions so cleanup can happen
       // Need to make subdirectory writable so we can delete test file
-      fs.chmodSync(subDir, 0o755);
+      chmodSync(subDir, 0o755);
 
       // Delete the file we created
-      if (fs.existsSync(subDirFile)) {
-        fs.unlinkSync(subDirFile);
+      if (existsSync(subDirFile)) {
+        unlinkSync(subDirFile);
       }
 
       // Delete the subdirectory
-      if (fs.existsSync(subDir)) {
-        fs.rmdirSync(subDir);
+      if (existsSync(subDir)) {
+        rmdirSync(subDir);
       }
     }
   });
@@ -305,38 +315,38 @@ describe('FileSystemCache', () => {
 
     // Get the parent directory path and namespace directory
     const parentDir = testCacheDir;
-    const namespacedDir = path.join(testCacheDir, 'default');
+    const namespacedDir = join(testCacheDir, 'default');
 
     // First make the namespace directory readable so we can delete its contents
-    fs.chmodSync(namespacedDir, 0o755);
+    chmodSync(namespacedDir, 0o755);
 
     // Delete all files in namespace directory
-    const files = fs.readdirSync(namespacedDir);
+    const files = readdirSync(namespacedDir);
     files.forEach((file) => {
-      const filePath = path.join(namespacedDir, file);
-      fs.unlinkSync(filePath);
+      const filePath = join(namespacedDir, file);
+      unlinkSync(filePath);
     });
 
     // Remove the namespace directory
-    fs.rmdirSync(namespacedDir);
+    rmdirSync(namespacedDir);
 
     // Now make the parent directory read-only to cause mkdir to fail in clear()
-    const parentDirMode = fs.statSync(parentDir).mode;
-    fs.chmodSync(parentDir, 0o444); // Read-only permissions
+    const parentDirMode = statSync(parentDir).mode;
+    chmodSync(parentDir, 0o444); // Read-only permissions
 
     try {
       // Clear should not throw even when directory recreation fails due to permissions
       cache.clear();
 
       // Directory won't be recreated because parent has no write permissions
-      expect(fs.existsSync(namespacedDir)).toBe(false);
+      expect(existsSync(namespacedDir)).toBe(false);
     } finally {
       // Restore permissions
-      fs.chmodSync(parentDir, parentDirMode);
+      chmodSync(parentDir, parentDirMode);
 
       // Make sure the namespace directory exists for other tests
-      if (!fs.existsSync(namespacedDir)) {
-        fs.mkdirSync(namespacedDir, { recursive: true });
+      if (!existsSync(namespacedDir)) {
+        mkdirSync(namespacedDir, { recursive: true });
       }
     }
   });
@@ -346,11 +356,11 @@ describe('FileSystemCache', () => {
     cache.set('key1', 'value1');
 
     // Get the namespaced directory
-    const namespacedDir = path.join(testCacheDir, 'default');
+    const namespacedDir = join(testCacheDir, 'default');
 
     // Create a non-JSON file in the namespaced cache directory
-    const nonJsonPath = path.join(namespacedDir, 'other-file.txt');
-    fs.writeFileSync(nonJsonPath, 'This is another file', 'utf8');
+    const nonJsonPath = join(namespacedDir, 'other-file.txt');
+    writeFileSync(nonJsonPath, 'This is another file', 'utf8');
 
     // Clear the cache
     cache.clear();
@@ -359,13 +369,13 @@ describe('FileSystemCache', () => {
     expect(cache.has('key1')).toBe(false);
 
     // The non-JSON file should also be gone as we now remove the entire directory
-    expect(fs.existsSync(nonJsonPath)).toBe(false);
+    expect(existsSync(nonJsonPath)).toBe(false);
 
     // Directory should be recreated
-    expect(fs.existsSync(namespacedDir)).toBe(true);
+    expect(existsSync(namespacedDir)).toBe(true);
 
     // Directory should be empty (except for any new files created automatically)
-    const filesAfterClear = fs.readdirSync(namespacedDir);
+    const filesAfterClear = readdirSync(namespacedDir);
     expect(filesAfterClear.length).toBe(0);
   });
 
@@ -375,28 +385,28 @@ describe('FileSystemCache', () => {
     cache.set('key2', 'value2');
 
     // Get the namespaced directory
-    const namespacedDir = path.join(testCacheDir, 'default');
+    const namespacedDir = join(testCacheDir, 'default');
 
     // Remove the entire directory to simulate it not existing
     try {
       // First delete files to ensure directory can be removed
-      const files = fs.readdirSync(namespacedDir);
+      const files = readdirSync(namespacedDir);
       files.forEach((file) => {
-        fs.unlinkSync(path.join(namespacedDir, file));
+        unlinkSync(join(namespacedDir, file));
       });
-      fs.rmdirSync(namespacedDir);
+      rmdirSync(namespacedDir);
     } catch (error) {
       // Ignore errors during setup
     }
 
     // Make sure the directory doesn't exist
-    expect(fs.existsSync(namespacedDir)).toBe(false);
+    expect(existsSync(namespacedDir)).toBe(false);
 
     // This should not throw and should recreate the directory
     cache.clear();
 
     // Verify the directory has been recreated
-    expect(fs.existsSync(namespacedDir)).toBe(true);
+    expect(existsSync(namespacedDir)).toBe(true);
   });
 
   describe('Namespace functionality', () => {
@@ -405,9 +415,9 @@ describe('FileSystemCache', () => {
       cache.set('testKey', 'testValue');
 
       // Check that the file was created in the default namespace
-      const defaultNamespaceDir = path.join(testCacheDir, 'default');
-      expect(fs.existsSync(defaultNamespaceDir)).toBe(true);
-      expect(fs.readdirSync(defaultNamespaceDir).length).toBeGreaterThan(0);
+      const defaultNamespaceDir = join(testCacheDir, 'default');
+      expect(existsSync(defaultNamespaceDir)).toBe(true);
+      expect(readdirSync(defaultNamespaceDir).length).toBeGreaterThan(0);
     });
 
     it('should use custom namespace when specified', () => {
@@ -416,9 +426,9 @@ describe('FileSystemCache', () => {
       cache.set('testKey', 'testValue');
 
       // Check that the file was created in the custom namespace
-      const customNamespaceDir = path.join(testCacheDir, customNamespace);
-      expect(fs.existsSync(customNamespaceDir)).toBe(true);
-      expect(fs.readdirSync(customNamespaceDir).length).toBeGreaterThan(0);
+      const customNamespaceDir = join(testCacheDir, customNamespace);
+      expect(existsSync(customNamespaceDir)).toBe(true);
+      expect(readdirSync(customNamespaceDir).length).toBeGreaterThan(0);
     });
 
     it('should keep data separate between different namespaces', () => {
@@ -441,10 +451,10 @@ describe('FileSystemCache', () => {
       expect(cache2.get(key)).toBe(value2);
 
       // Check that both namespace directories exist
-      const dir1 = path.join(testCacheDir, namespace1);
-      const dir2 = path.join(testCacheDir, namespace2);
-      expect(fs.existsSync(dir1)).toBe(true);
-      expect(fs.existsSync(dir2)).toBe(true);
+      const dir1 = join(testCacheDir, namespace1);
+      const dir2 = join(testCacheDir, namespace2);
+      expect(existsSync(dir1)).toBe(true);
+      expect(existsSync(dir2)).toBe(true);
     });
 
     it('should only clear cache entries in its own namespace', () => {
