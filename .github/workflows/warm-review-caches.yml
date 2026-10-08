@@ -1,0 +1,42 @@
+# Prepare review tools and dependency caches from the default branch.
+# This runs setup only: it does not call a model or publish a review.
+name: Warm review caches
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  warm:
+    if: github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    concurrency:
+      group: pipeline-warm-review-caches-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      - name: Read private automation source
+        id: source
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          client-id: ${{ vars.PIPELINE_SOURCE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.PIPELINE_SOURCE_APP_PRIVATE_KEY }}
+          owner: with-logic
+          repositories: pipeline
+          permission-contents: read
+      - name: Download the shared actions
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: with-logic/pipeline
+          ref: main
+          token: ${{ steps.source.outputs.token }}
+          path: .pipeline
+          persist-credentials: false
+      - name: Prepare downloaded local actions
+        run: node .pipeline/scripts/prepare-local-actions.mjs .pipeline
+      - name: Prepare shared review caches
+        uses: ./.pipeline/actions/code-review
+        with:
+          github-token: ${{ github.token }}
+          node-version: '24'
+          warm-cache: 'true'
