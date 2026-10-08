@@ -1,0 +1,53 @@
+# Explain merged changes in the shared channel. The shared action checks approval
+# and existing announcements before posting, so retries reuse the same message.
+name: Merged PR announcement
+on:
+  pull_request:
+    types: [closed]
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  announce:
+    if: >-
+      github.event.pull_request.merged == true &&
+      github.event.pull_request.base.ref == github.event.repository.default_branch &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.base.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: pr-announcement-${{ github.repository }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Read private automation source
+        id: source
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          client-id: ${{ vars.PIPELINE_SOURCE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.PIPELINE_SOURCE_APP_PRIVATE_KEY }}
+          owner: with-logic
+          repositories: pipeline
+          permission-contents: read
+      - name: Download the shared actions
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: with-logic/pipeline
+          ref: main
+          token: ${{ steps.source.outputs.token }}
+          path: .pipeline
+          persist-credentials: false
+      - name: Prepare downloaded local actions
+        run: node .pipeline/scripts/prepare-local-actions.mjs .pipeline
+      - name: Explain the merged change in Slack
+        uses: ./.pipeline/actions/pr-announcement
+        with:
+          github-token: ${{ github.token }}
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
+          channel-id: ${{ vars.MERGED_CHANNEL_ID }}
+          pr-number: ${{ github.event.pull_request.number }}
+          base-branch: ${{ github.event.repository.default_branch }}
+          require-approval: 'true'
+          repository-emoji: ${{ vars.MERGED_REPOSITORY_EMOJI }}
+          model: ${{ vars.NOTICE_MODEL }}

@@ -1,0 +1,49 @@
+# Give every same-repository PR a ticket, even before its title has a LOG number.
+# The shared action reads the live description and reuses an existing ticket.
+name: Create Linear ticket
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+permissions:
+  contents: read
+jobs:
+  ticket:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.pull_request.base.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    concurrency:
+      group: linear-ticket-${{ github.repository }}-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    steps:
+      - name: Read private automation source
+        id: source
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3
+        with:
+          client-id: ${{ vars.PIPELINE_SOURCE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.PIPELINE_SOURCE_APP_PRIVATE_KEY }}
+          owner: with-logic
+          repositories: pipeline
+          permission-contents: read
+      - name: Download the shared actions
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: with-logic/pipeline
+          ref: main
+          token: ${{ steps.source.outputs.token }}
+          path: .pipeline
+          persist-credentials: false
+      - name: Prepare downloaded local actions
+        run: node .pipeline/scripts/prepare-local-actions.mjs .pipeline
+      - name: Create or reuse the PR ticket
+        uses: ./.pipeline/actions/linear-ticket
+        with:
+          github-token: ${{ github.token }}
+          linear-api-key: ${{ secrets.LINEAR_API_KEY }}
+          pr-number: ${{ github.event.pull_request.number }}
+          team-key: ${{ vars.LINEAR_TEAM_KEY || 'LOG' }}
+          repo-label: ${{ vars.LINEAR_REPO_LABEL }}
