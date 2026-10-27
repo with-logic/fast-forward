@@ -6,7 +6,94 @@ on:
     branches: [main]
 
 jobs:
+  secret-scan:
+    name: Scan release sources
+    if: |
+      github.event.pull_request.merged == true &&
+      startsWith(github.head_ref, 'release/') &&
+      startsWith(github.event.pull_request.title, 'Release v') &&
+      contains(github.event.pull_request.labels.*.name, 'release')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      commit: ${{ steps.source.outputs.commit }}
+      tag-commit: ${{ steps.source.outputs.tag-commit }}
+    env:
+      GITLEAKS_IMAGE: ghcr.io/gitleaks/gitleaks@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f # v8.30.1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Resolve publication sources
+        id: source
+        shell: bash
+        run: |
+          set -euo pipefail
+          commit=$(git rev-parse HEAD)
+          version=$(jq -er '.version | select(type == "string" and length > 0)' package.json)
+          tag_commit=$(git rev-parse --verify "refs/tags/v$version^{commit}")
+          echo "commit=$commit" >> "$GITHUB_OUTPUT"
+          echo "tag-commit=$tag_commit" >> "$GITHUB_OUTPUT"
+      - name: Prepare official Gitleaks image
+        run: docker image inspect "$GITLEAKS_IMAGE" >/dev/null 2>&1 || docker pull "$GITLEAKS_IMAGE"
+      - name: Scan publication histories offline
+        env:
+          SCAN_HEAD: ${{ steps.source.outputs.commit }}
+          SCAN_TAG_HEAD: ${{ steps.source.outputs.tag-commit }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          readonly FINDINGS_EXIT_CODE=20
+          readonly SCAN_TIMEOUT_SECONDS=300 # Leave time for checkout and image preparation.
+          [[ $(git rev-parse HEAD) == "$SCAN_HEAD" ]]
+          [[ $(git rev-parse --is-shallow-repository) == false ]]
+          range="$SCAN_HEAD $SCAN_TAG_HEAD"
+          umask 077
+          report=$(mktemp -d)
+          trap 'rm -rf "$report"' EXIT
+          mkdir "$report/objects"
+          status=0
+          docker run --rm --pull=never --network none --user "$(id -u):$(id -g)" \
+            -e GIT_CONFIG_GLOBAL=/dev/null \
+            -v "$GITHUB_WORKSPACE:/repo:ro" -v "$report:/reports" \
+            -e GIT_CONFIG_COUNT=3 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/repo \
+            -e GIT_CONFIG_KEY_1=color.ui -e GIT_CONFIG_VALUE_1=false \
+            -e GIT_CONFIG_KEY_2=color.diff -e GIT_CONFIG_VALUE_2=false \
+            -e GIT_NO_REPLACE_OBJECTS=1 -e GIT_NO_LAZY_FETCH=1 \
+            -e GIT_OBJECT_DIRECTORY=/reports/objects -e GIT_ALTERNATE_OBJECT_DIRECTORIES=/repo/.git/objects \
+            "$GITLEAKS_IMAGE" git /repo \
+            --log-opts="$range --full-history --diff-merges=remerge --text --no-ext-diff --no-textconv" \
+            --redact=100 --no-banner --log-level error --timeout "$SCAN_TIMEOUT_SECONDS" --exit-code "$FINDINGS_EXIT_CODE" \
+            --report-format json --report-path /reports/findings.json \
+            >/dev/null 2>"$report/errors" || status=$?
+          # Upstream can log a Git-source error while returning zero.
+          if [[ "$status" == 125 || "$status" == 126 || "$status" == 127 ]]; then
+            echo "Secret scan could not start Docker or Gitleaks (exit $status)." >&2
+            exit 1
+          elif [[ -s "$report/errors" || ( "$status" != 0 && "$status" != "$FINDINGS_EXIT_CODE" ) ]]; then
+            category='scanner execution'
+            if grep -Eiq 'config|toml|allowlist' "$report/errors"; then
+              category='configuration'
+            elif grep -Eiq 'permission denied|read-only file system|report|no such file' "$report/errors"; then
+              category='filesystem/report'
+            elif grep -Eiq 'git|repository|revision|object|fatal:' "$report/errors"; then
+              category='Git history'
+            fi
+            echo "Secret scan error: $category (exit $status); raw diagnostics are withheld." >&2
+            exit 1
+          fi
+          jq -c '.[] | {rule: .RuleID, file: .File, line: .StartLine, commit: .Commit, "ignore-id": .Fingerprint}' "$report/findings.json"
+          count=$(jq length "$report/findings.json")
+          echo "finding-count=$count" >> "$GITHUB_OUTPUT"
+          echo "Gitleaks: $count potential finding(s). See docs/secret-scanning.md for remediation and native exceptions."
+          exit "$status"
+
   release-and-publish:
+    needs: secret-scan
     name: Create Release and Publish Packages
     # Only run if ALL conditions are met:
     # 1. PR was actually merged (not just closed)
@@ -14,6 +101,7 @@ jobs:
     # 3. PR title starts with "Release v"
     # 4. PR has the "release" label
     if: |
+      needs.secret-scan.result == 'success' &&
       github.event.pull_request.merged == true &&
       startsWith(github.head_ref, 'release/') &&
       startsWith(github.event.pull_request.title, 'Release v') &&
@@ -33,7 +121,7 @@ jobs:
       - name: Checkout main branch
         uses: actions/checkout@v5
         with:
-          ref: main
+          ref: ${{ needs.secret-scan.outputs.commit }}
           fetch-depth: 0
 
       - name: Setup Node.js
@@ -50,6 +138,8 @@ jobs:
           echo "Found version: $VERSION"
 
       - name: Verify tag exists
+        env:
+          SCANNED_TAG_COMMIT: ${{ needs.secret-scan.outputs.tag-commit }}
         run: |
           git fetch --tags
           if ! git tag -l "v${{ steps.version.outputs.version }}" | grep -q .; then
@@ -57,7 +147,8 @@ jobs:
             echo "This should have been created by the prepare-release script."
             exit 1
           fi
-          echo "✓ Tag v${{ steps.version.outputs.version }} exists"
+          test "$(git rev-parse --verify "refs/tags/v${{ steps.version.outputs.version }}^{commit}")" = "$SCANNED_TAG_COMMIT"
+          echo "✓ Tag v${{ steps.version.outputs.version }} exists at the scanned commit"
 
       - name: Validate version match
         run: |
