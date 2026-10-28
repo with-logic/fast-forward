@@ -81,19 +81,35 @@ version tag, including both reachable histories. The package build checks out
 that scanned commit, and release creation requires the version tag to still
 point to the scanned tag commit. Findings and scanner errors block publication.
 
-## Local staged scans
+## Local Git hook
 
-Install the native CLI once, then scan only the Git index:
+Install native Gitleaks once and activate this checkout's hooks from the
+repository root. Homebrew installs its current formula; use the
+[official 8.30.1 release](https://github.com/gitleaks/gitleaks/releases/tag/v8.30.1)
+for exact CI parity, and verify the installed version:
 
 ```sh
 brew install gitleaks
-GIT_CONFIG_PARAMETERS="${GIT_CONFIG_PARAMETERS:+$GIT_CONFIG_PARAMETERS }'color.ui=false' 'color.diff=false'" \
-gitleaks git --pre-commit --staged --redact=100
+gitleaks version
+git config core.hooksPath .githooks
 ```
 
-The native scan needs no network access. Disabling Git color prevents the 8.30.1
-diff parser from silently missing staged content. Use 8.30.1 for matching CI rules. Shared
-Utils hooks add this scan to existing linting in participating checkouts; their
-installation does not change this repository's hook configuration automatically.
-The organization-wide six-hour history sweep and Slack alerts are still rollout
-work; do not rely on them until activation is confirmed.
+The `prepare-commit-msg` hook scans staged changes after any normal pre-commit
+checks. `--no-verify` skips those pre-commit checks but still runs the scan.
+The scanner runs offline and never downloads tools during a commit. Ignored
+`.env` files, untracked files, and unstaged edits are excluded. Partially staged
+files are checked using their staged changes; force-added credentials are checked.
+Findings, a missing Gitleaks binary, and scanner errors block the commit.
+
+Stage root `.gitleaks.toml` and `.gitleaksignore` changes before committing;
+untracked policy files or unstaged policy changes block the scan. The reviewed,
+per-repository native exceptions above also apply to local scans. Quotes in
+hook output are display delimiters: copy a normal `ignore-id` into
+`.gitleaksignore` without those quotes. Prefer an exact-value TOML exception
+for recurring public/test fixtures.
+
+The hook scans text presented by native Git diff. Git attributes can mark paths
+as binary or apply textconv, changing what the hook sees. The separate CI commit
+gate forces text and disables textconv. See the
+[shared guide](https://github.com/with-logic/pipeline/blob/main/docs/secret-scanning.md)
+for remediation and native exceptions.
