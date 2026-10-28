@@ -38,6 +38,7 @@ jobs:
           tag_commit=$(git rev-parse --verify "refs/tags/v$version^{commit}")
           echo "commit=$commit" >> "$GITHUB_OUTPUT"
           echo "tag-commit=$tag_commit" >> "$GITHUB_OUTPUT"
+          echo "Secret scan: selected main commit $commit and release tag v$version at $tag_commit."
       - name: Prepare official Gitleaks image
         run: docker image inspect "$GITLEAKS_IMAGE" >/dev/null 2>&1 || docker pull "$GITLEAKS_IMAGE"
       - name: Scan publication histories offline
@@ -88,7 +89,6 @@ jobs:
           fi
           jq -c '.[] | {rule: .RuleID, file: .File, line: .StartLine, commit: .Commit, "ignore-id": .Fingerprint}' "$report/findings.json"
           count=$(jq length "$report/findings.json")
-          echo "finding-count=$count" >> "$GITHUB_OUTPUT"
           echo "Gitleaks: $count potential finding(s). See docs/secret-scanning.md for remediation and native exceptions."
           exit "$status"
 
@@ -100,6 +100,8 @@ jobs:
     # 2. Source branch starts with "release/"
     # 3. PR title starts with "Release v"
     # 4. PR has the "release" label
+    # 5. Selected main and release-tag histories pass the secret scan; publication
+    #    uses that main commit and verifies the tag still matches its scanned commit.
     if: |
       needs.secret-scan.result == 'success' &&
       github.event.pull_request.merged == true &&
@@ -118,7 +120,7 @@ jobs:
       # ============================================
       # Phase 1: Prepare and Validate
       # ============================================
-      - name: Checkout main branch
+      - name: Checkout scanned main commit
         uses: actions/checkout@v5
         with:
           ref: ${{ needs.secret-scan.outputs.commit }}
@@ -137,18 +139,21 @@ jobs:
           echo "tag=v$VERSION" >> $GITHUB_OUTPUT
           echo "Found version: $VERSION"
 
-      - name: Verify tag exists
+      - name: Verify release tag matches scanned commit
         env:
           SCANNED_TAG_COMMIT: ${{ needs.secret-scan.outputs.tag-commit }}
         run: |
           git fetch --tags
-          if ! git tag -l "v${{ steps.version.outputs.version }}" | grep -q .; then
-            echo "Error: Tag v${{ steps.version.outputs.version }} does not exist"
-            echo "This should have been created by the prepare-release script."
+          tag="v${{ steps.version.outputs.version }}"
+          if ! current_tag_commit=$(git rev-parse --verify "refs/tags/$tag^{commit}" 2>/dev/null); then
+            echo "Error: Release tag $tag is missing; expected scanned commit $SCANNED_TAG_COMMIT." >&2
             exit 1
           fi
-          test "$(git rev-parse --verify "refs/tags/v${{ steps.version.outputs.version }}^{commit}")" = "$SCANNED_TAG_COMMIT"
-          echo "✓ Tag v${{ steps.version.outputs.version }} exists at the scanned commit"
+          if [[ "$current_tag_commit" != "$SCANNED_TAG_COMMIT" ]]; then
+            echo "Error: Release tag $tag moved; scanned commit $SCANNED_TAG_COMMIT, current commit $current_tag_commit." >&2
+            exit 1
+          fi
+          echo "✓ Release tag $tag matches scanned commit $SCANNED_TAG_COMMIT"
 
       - name: Validate version match
         run: |

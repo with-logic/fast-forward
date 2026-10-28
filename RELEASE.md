@@ -216,7 +216,7 @@ git tag -l | sort -V | tail -1
 
 **Cause:** Version bumps belong in release PRs only. When a feature PR bumps `package.json`, main sits at the target version with no matching git tag, so `npm version <target>` is a no-op and the script cannot create the version commit or tag.
 
-**Fix:** Create the tag by hand and open a release PR that carries some other change (docs, changelog, tooling). The publish workflow only requires that the merged PR came from a `release/` branch with the `release` label and a `Release v` title, and that the tag matches `package.json` on main.
+**Fix:** Create the tag by hand and open a release PR that carries some other change (docs, changelog, tooling). The publish workflow requires that the merged PR came from a `release/` branch with the `release` label and a `Release v` title, and that the tag matches `package.json` on the selected main commit. Both that main commit’s history and the existing release tag’s history must pass secret scanning. Publication builds the scanned main commit and verifies that the tag still points to its scanned commit.
 
 ```bash
 # 1. Tag main at the version already in package.json
@@ -365,7 +365,9 @@ If you need to rollback a release:
 │  release-and-publish.yml workflow triggers (PR merge)   │
 │  - Checks: merged + branch + title + label             │
 │  - Reads version from package.json                      │
-│  - Verifies git tag exists                              │
+│  - Scans selected main and existing release-tag history │
+│  - Checks out the scanned main commit                   │
+│  - Verifies release tag still matches scanned commit    │
 │  - Creates GitHub release                               │
 │  - Runs tests                                           │
 │  - Builds package                                       │
