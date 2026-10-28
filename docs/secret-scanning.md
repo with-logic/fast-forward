@@ -1,14 +1,16 @@
 # Secret scanning
 
 The **Secret scan** check runs native, MIT-licensed Gitleaks 8.30.1 on PRs,
-branch/tag pushes, merge queues, and manual runs. Findings and scanner errors
-fail the check. Require this check in branch protection while preserving existing
-requirements. Gitleaks recognizes credential patterns; it does not verify whether
-a match is a live, private secret.
+branch/tag pushes, merge queues, and manual runs. Findings in PRs, merge queues,
+and pushed commit ranges fail, as do scanner errors. Full-history findings
+temporarily warn during historical triage. Gitleaks recognizes credential
+patterns; it does not verify whether a match is a live, private secret.
 
 PRs scan base-to-head history, so adding a credential and deleting it in a later
-commit still fails. Pushes scan the pushed range when the previous commit is
-available; new refs and manual runs scan history reachable from the selected head.
+commit still fails. Pushes scan the pushed range. First feature-branch pushes scan
+from the merge base with the fetched default branch, excluding inherited history.
+Missing required bases fail. New tags, first default-branch pushes, and manual
+runs scan history reachable from the selected head.
 Ignored and untracked local files such as `.env` are outside the scan. A
 force-added or previously tracked `.env` is Git content and is checked.
 
@@ -18,13 +20,15 @@ Gitleaks account or license signup is needed. A separate `pull_request_target`
 run uses trusted workflow code to scan PR data and comment on findings/errors,
 including fork PRs. It never runs project scripts, dependencies, or local actions.
 These comments start after the workflow reaches the default branch. They link to
-redacted metadata in the run log and never include detected values.
+rule, introducing commit, and line metadata. Detected values, raw paths, and
+Ignore IDs are omitted from public output.
 
 ## Investigate a finding
 
-The log shows the rule, file/line, introducing commit, and **Ignore ID**. Inspect
-the reported location privately; do not paste possible credentials into PRs,
-Slack, or issues.
+The public log shows the rule, introducing commit, and line. Run native Gitleaks
+privately at that commit for the full path and **Ignore ID**; native redaction
+does not hide those fields. Inspect findings privately; do not paste possible
+credentials into PRs, Slack, or issues.
 
 - **Real credential:** revoke or rotate it if exposed, replace it with an
   environment-variable or secret-store reference, and remove it from every
@@ -44,8 +48,9 @@ comments. A proposed exception can therefore affect its own PR scan. These
 changes need trusted human review, just like workflow changes; the required
 check does not technically enforce exception approval.
 
-For one historical finding, copy its complete Ignore ID into `.gitleaksignore`,
-one per line, with the reason and review reference on a separate comment line:
+For one historical finding, copy its complete Ignore ID from a private local scan
+into `.gitleaksignore`, one per line, with the reason and review reference on a
+separate comment line:
 
 ```text
 # Generated frontend demo value; reviewed in <review link>.
@@ -82,6 +87,9 @@ that scanned commit, and release creation requires the version tag to still
 point to the scanned tag commit. Findings and scanner errors block publication.
 
 ## Local Git hook
+
+Use local staged scans only with trusted staged changes; native Git diff may
+invoke an already configured textconv driver.
 
 Install native Gitleaks once and activate this checkout's hooks from the
 repository root. Homebrew installs its current formula; use the
