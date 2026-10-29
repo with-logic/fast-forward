@@ -11,8 +11,11 @@ credential patterns; it does not verify whether a match is a live, private secre
 PRs scan base-to-head history, so adding a credential and deleting it in a later
 commit still fails. Pushes scan the pushed range. First pushes to non-default
 branches scan from the merge base with the fetched default branch, excluding inherited history.
-Missing required bases fail. New tags, first default-branch pushes, and manual
-runs scan history reachable from the selected head.
+Missing required bases fail. In this audit workflow, new tag pushes, first
+default-branch pushes, and manual runs scan history reachable from the selected
+head and warn on historical findings during triage. Tag updates with a nonzero
+base SHA scan the pushed range and fail on findings. Separate publication and
+deployment gates remain strict.
 Ignored and untracked local files such as `.env` are outside the scan. A
 force-added or previously tracked `.env` is Git content and is checked.
 
