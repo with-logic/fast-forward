@@ -21,3 +21,10 @@ Thumbs.db
 # Cache directories
 .fastforward-cache/
 .my-custom-cache/
+
+# Crew-managed project copies; authored skills stay tracked.
+/.*/skills/pull-request-description/
+/.*/skills/review/
+/.*/skills/review-*/
+/.*/skills/.crew-target
+/.*/skills/.crew-target.lock.owner

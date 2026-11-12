@@ -446,3 +446,31 @@ npm install
 ## License
 
 MIT
+
+## Shared local review
+
+Shared review skills and the PR-description helper come from `.crewrc` through
+Crew. `npm install` does not run Crew: this package is published, and its
+install must run no scripts of its own. Prepare the skills with one Crew command.
+
+Use a published [Crew release](https://crew.logic.inc/) with project manifests
+(0.13+; 0.14.0 verified). Check `crew version` and Git read access to
+`with-logic/skills`. Enable the agent if needed with `crew agents enable codex`
+or `crew agents enable claude-code`, then run this from the repository root:
+
+```sh
+crew install --latest --json
+```
+
+A failure exits nonzero; fix the reported cause and run it again.
+
+Before **each required local review**, refresh again with a command timeout.
+Read the current agent's installed `review/SKILL.md` and follow its shared
+preparation checks: `.agents/skills/review/SKILL.md` for Codex or
+`.claude/skills/review/SKILL.md` for Claude Code. Continue `/review` in the same
+agent session. Failed preparation stops review. The shared procedure runs the
+full lens roster and proposes PR text through the separate helper.
+
+Commit `.crewrc` and its Crew-generated `.crewrc.lock`. Plain `crew install`
+retains the locked revision; `--latest` can advance it. Review those lock changes. Downloaded project skills stay
+ignored; authored and personal skills remain owned by their authors.
