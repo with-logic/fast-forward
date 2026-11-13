@@ -443,34 +443,41 @@ npm --version  # Should show 11.6.2
 npm install
 ```
 
-## License
-
-MIT
-
 ## Shared local review
 
 Shared review skills and the PR-description helper come from `.crewrc` through
-Crew. `npm install` does not run Crew: this package is published, and its
-install must run no scripts of its own. Prepare the skills with one Crew command.
+Crew. `npm install` does not run Crew. This package is published, so it has no
+`install` or `postinstall` script that could fetch skills on a consumer's
+machine. Prepare the skills with one Crew command.
 
 Use a published [Crew release](https://crew.logic.inc/) with project manifests
 (0.13+; 0.14.0 verified). Check `crew version` and Git read access to
-`with-logic/skills`. Enable the agent if needed with `crew agents enable codex`
-or `crew agents enable claude-code`, then run this from the repository root:
+`with-logic/skills`. Without that access, the shared local review is not
+available: report the review as not run. Enable the agent if needed with
+`crew agents enable codex` or `crew agents enable claude-code`, then run this
+from the repository root:
 
 ```sh
 crew install --latest --json
 ```
 
-A failure exits nonzero; fix the reported cause and run it again.
+A failure exits nonzero; fix the reported cause and run it again. A zero exit
+does not prove that your agent is ready. The preparation checks of each review
+confirm it.
 
-Before **each required local review**, refresh again with a command timeout.
-Read the current agent's installed `review/SKILL.md` and follow its shared
-preparation checks: `.agents/skills/review/SKILL.md` for Codex or
-`.claude/skills/review/SKILL.md` for Claude Code. Continue `/review` in the same
-agent session. Failed preparation stops review. The shared procedure runs the
+Before **each required local review**, the coding agent refreshes again and
+verifies the result. The "Required local review" section of `CLAUDE.md` holds
+that procedure. Failed preparation stops review. The shared procedure runs the
 full lens roster and proposes PR text through the separate helper.
 
 Commit `.crewrc` and its Crew-generated `.crewrc.lock`. Plain `crew install`
-retains the locked revision; `--latest` can advance it. Review those lock changes. Downloaded project skills stay
-ignored; authored and personal skills remain owned by their authors.
+retains the locked revision; `--latest` can advance it. Commit a lock advance in
+the pull request under review, so that reviewers see it, or discard it with
+`git restore .crewrc.lock`. Do not commit it on `main` before
+`npm run prepare-release`, which requires a clean working tree. Downloaded
+project skills stay ignored; authored and personal skills remain owned by their
+authors.
+
+## License
+
+MIT

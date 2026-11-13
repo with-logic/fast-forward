@@ -41,20 +41,22 @@ gets its instructions from the workflow. In hosted CI, do not run Crew and do no
 treat missing Crew as a failed review.
 
 Prepare each required local review in the existing coding-agent session. From this
-repository root, run crew version and crew install --latest --json with a command
-timeout. Require a published Crew 0.13+ release (0.14.0 verified). Then read the
-updated project review/SKILL.md: .agents/skills/review/SKILL.md for Codex or
-.claude/skills/review/SKILL.md for Claude Code. Follow its shared preparation
+repository root, run `crew version` and `crew install --latest --json` with a
+command timeout. Require the published Crew release that
+README.md#shared-local-review names. Then read the updated project
+`review/SKILL.md`: `.agents/skills/review/SKILL.md` for Codex or
+`.claude/skills/review/SKILL.md` for Claude Code. Follow its shared preparation
 procedure to verify this agent's full roster, helper and source records, then
-continue /review in this session. Refresh once per invocation.
+continue `/review` in this session. Refresh once per invocation.
 
-Failed preparation stops required review. A successful dependency setup, a no-agent exit,
-or another agent's install does not prove readiness. Do not use stale or personal
-skills as a fallback. See README.md#shared-local-review for recovery.
+Failed preparation stops required review. A successful `npm install`, a
+`no_agents` result, or another agent's install does not prove readiness. Do not
+use stale or personal skills as a fallback. See README.md#shared-local-review
+for recovery.
 
 The shared procedure includes proposed PR title and body text from the separately
 installed pull-request-description helper. This local step does not edit the PR
-or change the code-review verdict. Keep .crewrc and its generated lock tracked;
+or change the code-review verdict. Keep `.crewrc` and its generated lock tracked;
 keep downloaded copies ignored and lock changes visible for review. Do not
 refresh while reviewers run or add a repository-specific review loader.
 
