@@ -452,8 +452,7 @@ machine. Prepare the skills with one Crew command.
 
 Use a published [Crew release](https://crew.logic.inc/) with project manifests
 (0.13+; 0.14.0 verified). Check `crew version` and Git read access to
-`with-logic/skills`. Without that access, the shared local review is not
-available: report the review as not run. Enable the agent if needed with
+`with-logic/skills`. Enable the agent if needed with
 `crew agents enable codex` or `crew agents enable claude-code`, then run this
 from the repository root:
 
@@ -471,9 +470,9 @@ that procedure. Failed preparation stops review. The shared procedure runs the
 full lens roster and proposes PR text through the separate helper.
 
 Commit `.crewrc` and its Crew-generated `.crewrc.lock`. Plain `crew install`
-retains the locked revision; `--latest` can advance it. Commit a lock advance in
-the pull request under review, so that reviewers see it, or discard it with
-`git restore .crewrc.lock`. Do not commit it on `main` before
+retains the locked revision; `--latest` can advance it. As the agent, do not
+discard a `.crewrc.lock` change. The author commits it in the pull request under
+review or discards it after the review. Do not commit it on `main` before
 `npm run prepare-release`, which requires a clean working tree. Downloaded
 project skills stay ignored; authored and personal skills remain owned by their
 authors.

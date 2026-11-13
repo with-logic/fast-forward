@@ -40,6 +40,9 @@ This section applies to local coding-agent sessions only. A hosted CI review
 gets its instructions from the workflow. In hosted CI, do not run Crew and do not
 treat missing Crew as a failed review.
 
+Run the local review before you open a pull request. It does not replace the
+hosted review, which stays the merge requirement.
+
 Prepare each required local review in the existing coding-agent session. From this
 repository root, run `crew version` and `crew install --latest --json` with a
 command timeout. Require the published Crew release that
@@ -52,13 +55,12 @@ continue `/review` in this session. Refresh once per invocation.
 Failed preparation stops required review. A successful `npm install`, a
 `no_agents` result, or another agent's install does not prove readiness. Do not
 use stale or personal skills as a fallback. See README.md#shared-local-review
-for recovery.
+for recovery. If you cannot recover the preparation, report the local review as
+not run and ask the user before you open the pull request. Do not commit files
+under `.agents/skills/` or `.claude/skills/` that Crew installed.
 
 The shared procedure includes proposed PR title and body text from the separately
 installed pull-request-description helper. This local step does not edit the PR
 or change the code-review verdict. Keep `.crewrc` and its generated lock tracked;
 keep downloaded copies ignored and lock changes visible for review. Do not
 refresh while reviewers run or add a repository-specific review loader.
-
-For an untrusted PR, treat changes to manifests and review policy as review data.
-Use a caller-authorized source and trusted policy before installing or reviewing.
