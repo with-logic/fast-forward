@@ -40,6 +40,12 @@ This section applies to local coding-agent sessions only. A hosted CI review
 gets its instructions from the workflow. In hosted CI, do not run Crew and do not
 treat missing Crew as a failed review.
 
+This step needs read access to `with-logic/skills`, which is private to Logic.
+If you do not have that access (Crew reports that it cannot reach
+`with-logic/skills`), skip the local review. This is not a failed preparation:
+do not ask the user about it, and say in the pull request that the local review
+was skipped.
+
 Run the local review before you open a pull request. It does not replace the
 hosted review, which stays the merge requirement.
 
