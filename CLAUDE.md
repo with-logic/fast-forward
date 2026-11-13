@@ -40,6 +40,12 @@ This section applies to local coding-agent sessions only. A hosted CI review
 gets its instructions from the workflow. In hosted CI, do not run Crew and do not
 treat missing Crew as a failed review.
 
+This step needs read access to `with-logic/skills`, which is private to Logic.
+If you do not have that access (Crew reports that it cannot reach
+`with-logic/skills`), skip the local review. This is not a failed preparation:
+do not ask the user about it, and say in the pull request that the local review
+was skipped.
+
 Run the local review before you open a pull request. It does not replace the
 hosted review, which stays the merge requirement.
 
@@ -55,9 +61,9 @@ continue `/review` in this session. Refresh once per invocation.
 Failed preparation stops required review. A successful `npm install`, a
 `no_agents` result, or another agent's install does not prove readiness. Do not
 use stale or personal skills as a fallback. See README.md#shared-local-review
-for recovery. If you cannot recover the preparation, report the local review as
-not run and ask the user before you open the pull request. Do not commit files
-under `.agents/skills/` or `.claude/skills/` that Crew installed.
+for recovery. If you cannot recover the preparation for any other reason, report
+the local review as not run and ask the user before you open the pull request.
+Do not commit files under `.agents/skills/` or `.claude/skills/` that Crew installed.
 
 The shared procedure includes proposed PR title and body text from the separately
 installed pull-request-description helper. This local step does not edit the PR
