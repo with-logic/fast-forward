@@ -70,6 +70,6 @@ installed pull-request-description helper. This local step does not edit the PR
 or change the code-review verdict. Keep `.crewrc` and its generated lock tracked;
 keep downloaded copies ignored and lock changes visible for review. Do not
 refresh while reviewers run or add a repository-specific review loader.
-The hosted review workflow's `review-source` input, with the variable
-`PIPELINE_SOURCE_APP_CLIENT_ID` and the secret `PIPELINE_SOURCE_APP_PRIVATE_KEY`, is the
-only exception: it selects the review skills for hosted CI, not for local review.
+The hosted review workflow is the one exception to the no-loader rule above: its
+`review-source` input, with the variable `PIPELINE_SOURCE_APP_CLIENT_ID` and the secret
+`PIPELINE_SOURCE_APP_PRIVATE_KEY`, selects the Skills source for hosted CI only.
