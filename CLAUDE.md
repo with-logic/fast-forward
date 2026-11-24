@@ -70,6 +70,8 @@ installed pull-request-description helper. This local step does not edit the PR
 or change the code-review verdict. Keep `.crewrc` and its generated lock tracked;
 keep downloaded copies ignored and lock changes visible for review. Do not
 refresh while reviewers run or add a repository-specific review loader.
-The hosted review workflow is the one exception to the no-loader rule above: its
-`review-source` input, with the variable `PIPELINE_SOURCE_APP_CLIENT_ID` and the secret
-`PIPELINE_SOURCE_APP_PRIVATE_KEY`, selects the Skills source for hosted CI only.
+The hosted review workflow does not download or select review skills. It passes
+the source App credentials to Pipeline's shared review action: the
+`skills-app-client-id` input (variable `PIPELINE_SOURCE_APP_CLIENT_ID`) and the
+`skills-app-private-key` input (secret `PIPELINE_SOURCE_APP_PRIVATE_KEY`). That
+action always fetches the skills from `with-logic/skills`.
